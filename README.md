@@ -36,3 +36,7 @@ Usage instructions, including YAML configuration and launch files, will be added
 ## License
 
 Licensed under the BSD-3-Clause License. Check LICENSE file for full license.
+
+## Contributing
+
+Contributions are welcome post-development. Guidelines for issues and pull requests will be provided in the CONTRIBUTING file on GitHub repository.
