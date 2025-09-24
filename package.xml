@@ -1,7 +1,7 @@
 <package format="3">
     <name>adaptive-bridge</name>
     <version>0.1.0</version>
-    <description>ROS 2 package for dynamic topic decoupling to isolate critical and non-critical subscribers</description>
+    <description>ROS 2 package for dynamic topic decoupling to isolate critical and non-critical subscribers and assigning new QoS policies by adapting to changes in subscriber criticality</description>
     <maintainer email="kaushalrajpuwar@protonmail.com">Kaushalraj Puwar</maintainer>
     <license>BSD-3-Clause</license>
     <depend>rlcpp</depend>
