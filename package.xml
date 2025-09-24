@@ -1,0 +1,10 @@
+<package format="3">
+    <name>adaptive-bridge</name>
+    <version>0.1.0</version>
+    <description>ROS 2 package for dynamic topic decoupling to isolate critical and non-critical subscribers</description>
+    <maintainer email="kaushalrajpuwar@protonmail.com">Kaushalraj Puwar</maintainer>
+    <license>BSD-3-Clause</license>
+    <depend>rlcpp</depend>
+    <buildtool_depend>ament_cmake</buildtool_depend>
+    <test_depend>ament_lint_auto</test_depend>
+</package>
