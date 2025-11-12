@@ -1,0 +1,22 @@
+[2.380s] Invoking command in '/home/kaushalraj/adaptive_bridge_ws/build/adaptive_bridge': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/kaushalraj/adaptive_bridge_ws/build/adaptive_bridge/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/kaushalraj/adaptive_bridge_ws/install/adaptive_bridge/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/kaushalraj/adaptive_bridge_ws/build/adaptive_bridge/build --no-deps symlink_data
+[2.793s] running develop
+[3.014s] running egg_info
+[3.014s] creating adaptive_bridge.egg-info
+[3.035s] writing adaptive_bridge.egg-info/PKG-INFO
+[3.035s] writing dependency_links to adaptive_bridge.egg-info/dependency_links.txt
+[3.036s] writing requirements to adaptive_bridge.egg-info/requires.txt
+[3.036s] writing top-level names to adaptive_bridge.egg-info/top_level.txt
+[3.036s] writing manifest file 'adaptive_bridge.egg-info/SOURCES.txt'
+[3.079s] reading manifest file 'adaptive_bridge.egg-info/SOURCES.txt'
+[3.080s] writing manifest file 'adaptive_bridge.egg-info/SOURCES.txt'
+[3.102s] running build_ext
+[3.102s] Creating /home/kaushalraj/adaptive_bridge_ws/install/adaptive_bridge/lib/python3.12/site-packages/adaptive-bridge.egg-link (link to .)
+[3.103s] 
+[3.103s] Installed /home/kaushalraj/adaptive_bridge_ws/build/adaptive_bridge
+[3.103s] running symlink_data
+[3.103s] creating /home/kaushalraj/adaptive_bridge_ws/install/adaptive_bridge/share/ament_index
+[3.103s] creating /home/kaushalraj/adaptive_bridge_ws/install/adaptive_bridge/share/ament_index/resource_index
+[3.104s] creating /home/kaushalraj/adaptive_bridge_ws/install/adaptive_bridge/share/ament_index/resource_index/packages
+[3.104s] symbolically linking /home/kaushalraj/adaptive_bridge_ws/build/adaptive_bridge/resource/adaptive_bridge -> /home/kaushalraj/adaptive_bridge_ws/install/adaptive_bridge/share/ament_index/resource_index/packages
+[3.104s] symbolically linking /home/kaushalraj/adaptive_bridge_ws/build/adaptive_bridge/package.xml -> /home/kaushalraj/adaptive_bridge_ws/install/adaptive_bridge/share/adaptive_bridge
+[3.147s] Invoked command in '/home/kaushalraj/adaptive_bridge_ws/build/adaptive_bridge' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/kaushalraj/adaptive_bridge_ws/build/adaptive_bridge/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/kaushalraj/adaptive_bridge_ws/install/adaptive_bridge/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/kaushalraj/adaptive_bridge_ws/build/adaptive_bridge/build --no-deps symlink_data
