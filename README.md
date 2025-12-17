@@ -35,7 +35,7 @@ Usage instructions, including YAML configuration and launch files, will be added
 
 ## License
 
-Licensed under the BSD-3-Clause License. Check LICENSE file for full license.
+Licensed under the Apache License 2.0. Check LICENSE file for the full license.
 
 ## Contributing
 

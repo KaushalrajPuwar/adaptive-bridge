@@ -3,7 +3,7 @@
     <version>0.1.0</version>
     <description>Adaptive Bridge: dynamic topic decoupling and QoS adaptation</description>
     <maintainer email="kaushalrajpuwar@protonmail.com">Kaushalraj Puwar</maintainer>
-    <license>BSD-3-Clause</license>
+    <license>Apache-2.0</license>
 
     <depend>rclpy</depend>
 
