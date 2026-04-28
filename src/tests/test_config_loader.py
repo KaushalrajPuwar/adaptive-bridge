@@ -5,6 +5,7 @@ import yaml
 
 from adaptive_bridge.config_manager import ConfigManager
 from adaptive_bridge.config_types import ProbeConfig, TopicConfig
+from adaptive_bridge.topic_registry import TopicRegistry
 
 
 def _write_yaml(tmp_path: Path, name: str, payload: dict) -> str:
@@ -158,3 +159,10 @@ def test_legacy_config_compatibility_emits_deprecation(tmp_path: Path) -> None:
         cfg = ConfigManager(cfg_file)
     assert cfg.get_topics()[0].input_topic == "/scan"
     assert cfg.is_node_forced_critical("known_node") is True
+
+
+def test_topics_are_consumable_by_topic_registry() -> None:
+    cfg = ConfigManager()
+    registry = TopicRegistry()
+    routes = registry.build_routes(cfg.get_topics())
+    assert "scan_main" in routes

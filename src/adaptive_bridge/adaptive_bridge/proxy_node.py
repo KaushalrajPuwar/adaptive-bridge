@@ -7,6 +7,8 @@ from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy, QoSDur
 from sensor_msgs.msg import LaserScan
 from .config_manager import ConfigManager
 from .config_types import QoSPolicy
+from .models import TopicCounters
+from .topic_registry import TopicRegistry
 
 
 class ProxyNode(Node):
@@ -29,8 +31,11 @@ class ProxyNode(Node):
         self.config = config or ConfigManager(cp)
 
         topics = self.config.get_topics()
-        route = topics[0]
-        self._topic_id = route.id
+        self._registry = TopicRegistry()
+        self._registry.build_routes(topics)
+        route = self._registry.list_routes()[0]
+        self._topic_id = route.topic_id
+        self._route = route
         self._input_topic = route.input_topic
         self._crit_topic = route.critical_output
         self._noncrit_topic = route.noncritical_output
@@ -45,7 +50,7 @@ class ProxyNode(Node):
             LaserScan, self._noncrit_topic, self._noncrit_qos)
         
         # Internal counters for metrics
-        self._msg_count = 0
+        self._counters = TopicCounters()
 
         # Subscriber: use small queue depth to simulate real pipeline
         sub_qos = QoSProfile(depth=10)
@@ -77,17 +82,24 @@ class ProxyNode(Node):
         # Convert or annotate message if needed. For sprint we forward as-is.
         try:
             # Publish to critical path (RELIABLE)
+            self._counters.total_received += 1
             self.pub_crit.publish(msg)
+            self._counters.total_forwarded_critical += 1
             # Publish to non-critical (BEST_EFFORT)
             self.pub_noncrit.publish(msg)
-            self._msg_count += 1
+            self._counters.total_forwarded_noncritical += 1
         except Exception as e:
             self.get_logger().error(f"Publish error: {e}")
 
         # periodic log to show message flow (not every message)
         now = time.time()
         if now - self._last_log > 5.0:
-            self.get_logger().info(f"Forwarded {self._msg_count} messages to critical & noncritical. (Latest scan: {len(msg.ranges)} points)")
+            self.get_logger().info(
+                "Forwarded "
+                f"{self._counters.total_forwarded_critical} critical / "
+                f"{self._counters.total_forwarded_noncritical} noncritical messages. "
+                f"(Latest scan: {len(msg.ranges)} points)"
+            )
             self._last_log = now
 
 

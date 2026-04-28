@@ -24,6 +24,7 @@ from typing import Deque, Dict, List, Optional
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+from .models import TopicCounters, TopicRuntimeState
 
 
 class DiagnosticsPublisher(Node):
@@ -53,6 +54,7 @@ class DiagnosticsPublisher(Node):
 
         # Exposed publish frequency
         self._publish_interval = float(publish_interval)
+        self._topic_states: Dict[str, TopicRuntimeState] = {}
 
         # ROS publisher for diagnostics JSON
         self._pub = self.create_publisher(String, "/adaptive_bridge/diagnostics", 10)
@@ -79,6 +81,16 @@ class DiagnosticsPublisher(Node):
             self._latency_windows[path] = deque(maxlen=100)
         self._latency_windows[path].append(float(ms))
 
+    def ingest_topic_counters(self, topic_id: str, counters: TopicCounters) -> None:
+        """Store per-topic counters from shared Step 3 models."""
+        if topic_id not in self._topic_states:
+            return
+        self._topic_states[topic_id].counters = counters
+
+    def ingest_topic_state(self, state: TopicRuntimeState) -> None:
+        """Store full per-topic runtime state from shared Step 3 models."""
+        self._topic_states[state.route.topic_id] = state
+
     # -----------------------
     # Internal helpers
     # -----------------------
@@ -104,7 +116,10 @@ class DiagnosticsPublisher(Node):
             "latency": {
                 p: self._compute_stats(self._latency_windows.get(p, deque()))
                 for p in self._latency_windows
-            }
+            },
+            "topics": {
+                topic_id: state.to_dict() for topic_id, state in self._topic_states.items()
+            },
         }
         return payload
 

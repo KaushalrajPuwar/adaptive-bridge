@@ -40,6 +40,15 @@ Step 2 Completion (Configuration Contract and Schema Validation)
 - Added `minimal.yaml` and `stress.yaml` sample configs and upgraded `default.yaml` to full Step 2 schema.
 - Added validation-focused tests for missing sections, bad thresholds/rates, unknown QoS profiles, duplicate topic IDs, and legacy compatibility path.
 
+Step 3 Completion (Internal Data Models and Topic Registry)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Added shared runtime model layer (`models.py`) for routes, counters, policy mode, classifier snapshot, and per-topic runtime state.
+- Added deterministic `TopicRegistry` with topic sanitizer, route build helpers, route export helpers, and strict uniqueness enforcement.
+- Updated proxy to consume `TopicRegistry` route objects and model-backed counters (single-route behavior preserved pending Step 4).
+- Updated diagnostics/classifier placeholder to align with Step 3 shared model contracts.
+- Expanded proxy-basic tests for registry/topic determinism, uniqueness failures, and model serialization behavior.
+
 Architecture & Core Design
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
