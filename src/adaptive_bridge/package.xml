@@ -6,11 +6,13 @@
     <license>Apache-2.0</license>
 
     <depend>rclpy</depend>
+    <depend>sensor_msgs</depend>
 
     <buildtool_depend>ament_python</buildtool_depend>
 
     <test_depend>ament_lint_auto</test_depend>
     <test_depend>ament_lint_common</test_depend>
+    <test_depend>python3-pytest</test_depend>
 
     <export>
         <build_type>ament_python</build_type>

@@ -4,7 +4,7 @@ from typing import Callable, Optional
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
-from std_msgs.msg import String  # use String for sprint; swap for LaserScan later
+from sensor_msgs.msg import LaserScan
 from .config_manager import ConfigManager
 from .qos_manager import QoSManager
 
@@ -52,21 +52,24 @@ class ProxyNode(Node):
 
         # Pre-create publishers (prevents discovery churn at runtime)
         self.pub_crit = self.create_publisher(
-            String, self._crit_topic, self._crit_qos)
+            LaserScan, self._crit_topic, self._crit_qos)
         self.pub_noncrit = self.create_publisher(
-            String, self._noncrit_topic, self._noncrit_qos)
+            LaserScan, self._noncrit_topic, self._noncrit_qos)
+        
+        # Internal counters for metrics
+        self._msg_count = 0
 
         # Subscriber: use small queue depth to simulate real pipeline
         sub_qos = QoSProfile(depth=10)
         self.subscription = self.create_subscription(
-            String, self._input_topic, self._on_message, sub_qos
+            LaserScan, self._input_topic, self._on_message, sub_qos
         )
         self._last_log = time.time()
 
         self.get_logger().info(
             f"Proxy listening: in='{self._input_topic}' out_crit='{self._crit_topic}' out_noncrit='{self._noncrit_topic}'")
 
-    def _on_message(self, msg: String) -> None:
+    def _on_message(self, msg: LaserScan) -> None:
         # Simple forwarding policy: publish to critical always; noncritical optionally
         # Convert or annotate message if needed. For sprint we forward as-is.
         try:
@@ -74,13 +77,14 @@ class ProxyNode(Node):
             self.pub_crit.publish(msg)
             # Publish to non-critical (BEST_EFFORT)
             self.pub_noncrit.publish(msg)
+            self._msg_count += 1
         except Exception as e:
             self.get_logger().error(f"Publish error: {e}")
 
         # periodic log to show message flow (not every message)
         now = time.time()
         if now - self._last_log > 5.0:
-            self.get_logger().info(f"Forwarded message seq (approx) to critical & noncritical.")
+            self.get_logger().info(f"Forwarded {self._msg_count} messages to critical & noncritical. (Latest scan: {len(msg.ranges)} points)")
             self._last_log = now
 
 

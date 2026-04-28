@@ -1,0 +1,13 @@
+input_topic: "/scan"
+critical_topic_prefix: "/adaptive_bridge/critical"
+noncritical_topic_prefix: "/adaptive_bridge/noncritical"
+qos_profiles:
+  critical: "reliable_depth10"
+  noncritical: "besteffort_depth5_lifespan500ms"
+probe:
+  enabled: true
+  rate_hz: 5
+  rtt_threshold_ms: 100
+  loss_threshold: 0.05
+  hysteresis_count: 3
+overrides: {}

@@ -5,9 +5,14 @@ log/
 
 # Python cache
 **/__pycache__/
+.pytest_cache/
 *.pyc
 *.pyo
 *.pyd
 
 # Colcon metadata
 .colcon/
+
+#project specific
+docs/
+.kilo/

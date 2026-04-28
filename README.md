@@ -6,7 +6,7 @@ A ROS 2 package for dynamically bridging critical and non-critical subscribers i
 
 `adaptive-bridge` mitigates the slow subscriber problem, where slow subscribers (e.g., remote nodes over wireless networks or resource-constrained local nodes) cause publisher choking or message loss. It dynamically classifies subscribers as critical (e.g., low-latency navigation nodes) or non-critical (e.g., high-latency visualization nodes) based on callback latency, reassigns non-critical subscribers to separate topics, and applies adaptive QoS settings (e.g., `RELIABLE` for critical, `BEST_EFFORT` with downsampling for non-critical). The package supports navigation and image streaming scenarios and is compatible with Cyclone DDS and Fast DDS.
 
-This package is under development for ROS 2 Jazzy, targeting robotic applications requiring reliable communication. It provides an automated, user-friendly solution configurable via YAML.
+This package has a working prototype that runs today, with production hardening in progress (see `docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md`).
 
 ## Planned Features
 
@@ -16,23 +16,74 @@ This package is under development for ROS 2 Jazzy, targeting robotic application
 - **User Configuration**: YAML-based setup for critical topics and QoS overrides.
 - **DDS Compatibility**: Supports Cyclone DDS and Fast DDS.
 
-## Installation
+## Installation (Development Available Now)
 
-This package is under development and not yet available. Source installation instructions will be provided upon release via the GitHub repository.
+```bash
+cd /path/to/adaptive_bridge_ws
+rm -rf build install log
+colcon build --packages-select adaptive_bridge
+source install/setup.bash
+```
+
+**Note:** Production release packaging is pending completion of roadmap Steps 1-20.
 
 ## Usage
 
-Usage instructions, including YAML configuration and launch files, will be added post-development. The package will support:
-- Navigation (e.g., `/turtle1/cmd_vel`).
-- Image streaming (e.g., `/camera/image_raw`).
+### Available now (prototype baseline)
 
-## Development Status
+- Build package in development workspace.
+- Run `proxy_node` and forward `/scan` (`sensor_msgs/LaserScan`) to:
+  - `/adaptive_bridge/critical/scan`
+  - `/adaptive_bridge/noncritical/scan`
+- Validate forwarding using `ros2 topic echo`.
 
-- **Stage**: Pre-development (planning phase).
-- **Timeline**: Targeting completion in 12 weeks for RA-L submission.
-- **Testing**: Planned Gazebo simulations with simulated Wi-Fi (Planned: 50 ms latency, 5% packet loss. Mulitple scenarios might me tested in future as per need) for navigation and image streaming, using Cyclone DDS and Fast DDS.
+### Planned in roadmap (production hardening)
+
+- Classifier node with hysteresis and probe-driven decisions.
+- Security controls for control-plane messages.
+- Full evaluation harness and repeatable experiment automation in eval workspace.
+- Production-grade multi-topic policy engine and test pyramid.
+
+## Development Status (Step 1 Snapshot — 2026-04-28)
+
+- **Stage**: Prototype implementation exists and runs; production system is in progress.
+- **Roadmap Position**: Step 1 completed; Step 2 next (`docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md`).
+- **Testing Direction**: Evaluation will include controlled impairment experiments and multi-RMW validation (FastDDS/CycloneDDS).
 - **Metrics**: Latency, message loss, throughput, CPU/network usage.
 
+## Governance
+
+- Architecture changes must follow `docs/11_DECISIONS_LOG.md` change-control rules before implementation.
+- Execution order and delivery gates are defined in `docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md`.
+
+## Current Implementation Status (as of 2026-04-28)
+
+**Implemented:**
+- `proxy_node.py`: Single-topic LaserScan forwarding with dual critical/noncritical outputs
+- `config_manager.py`: YAML configuration loading with QoS profile mapping
+- `qos_manager.py`: Named QoS profile resolution
+- `diagnostics.py`: Standalone diagnostics node
+- `utils/probes.py`: Probe client/responder utilities for RTT measurement
+
+**In Progress (Steps 1-20):**
+- Multi-topic proxy support
+- Classifier node with hysteresis
+- Security controls
+- Production test suite
+- Evaluation harness
+
+See `docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md` for detailed step breakdown.
+
+## Development Validation Commands
+
+```bash
+cd /path/to/adaptive_bridge_ws
+rm -rf build install log
+colcon build --packages-select adaptive_bridge
+source install/setup.bash
+colcon test --packages-select adaptive_bridge
+colcon test-result --verbose
+```
 ## License
 
 Licensed under the Apache License 2.0. Check LICENSE file for the full license.
