@@ -1,94 +1,195 @@
-# src/adaptive_bridge/adaptive_bridge/config_manager.py
-import os
-import yaml
-from typing import Any, Dict, Optional
+from __future__ import annotations
 
-DEFAULT_CONFIG = {
-    "input_topic": "/scan",
-    "critical_topic_prefix": "/adaptive_bridge/critical",
-    "noncritical_topic_prefix": "/adaptive_bridge/noncritical",
-    "qos_profiles": {
-        "critical": "reliable_depth10",
-        "noncritical": "besteffort_depth5_lifespan500ms"
-    },
-    "probe": {
-        "enabled": True,
-        "rate_hz": 5,
-        "rtt_threshold_ms": 100,
-        "loss_threshold": 0.05,
-        "hysteresis_count": 3
-    },
-    "overrides": {}
-}
+import os
+import warnings
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from .config_types import (
+    BridgeConfig,
+    ClassifierConfig,
+    ProbeConfig,
+    QoSPolicy,
+    SafetyConfig,
+    SecurityConfig,
+    TopicConfig,
+)
 
 
 class ConfigManager:
-    """
-    Loads and exposes configuration for Adaptive Bridge.
-
-    Responsibilities:
-      - Load YAML config from a file path (or use defaults).
-      - Provide safe getters for parameters expected by other components.
-      - Allow runtime reload via re-read (used during development).
-    """
+    """Load, normalize, validate and expose strongly typed bridge configuration."""
 
     def __init__(self, config_path: str = ""):
         self._config_path = config_path or ""
-        self._config: Dict[str, Any] = {}
+        self._config: BridgeConfig | None = None
         self.load_or_default()
 
     def load_or_default(self) -> None:
-        """Load YAML config if present, otherwise use DEFAULT_CONFIG."""
-        if self._config_path and os.path.isfile(self._config_path):
-            with open(self._config_path, "r", encoding="utf-8") as fh:
-                self._config = yaml.safe_load(fh) or {}
-            # merge defaults for missing keys
-            self._deep_merge(DEFAULT_CONFIG, self._config)
-        else:
-            # no file found, fall back to defaults
-            self._config = DEFAULT_CONFIG.copy()
+        raw = self._read_raw()
+        normalized = self._normalize(raw)
+        self._config = BridgeConfig.from_dict(normalized)
 
     def reload(self) -> None:
-        """Force reloading config from file. Useful for hot-reload in development."""
         self.load_or_default()
 
-    def get(self, key: str, default: Any = None) -> Any:
-        """Generic getter that looks up a top-level key."""
-        return self._config.get(key, default)
+    def _read_raw(self) -> dict[str, Any]:
+        if self._config_path and os.path.isfile(self._config_path):
+            with open(self._config_path, "r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+            if not isinstance(data, dict):
+                raise ValueError("root config must be a mapping")
+            return data
+        default_path = Path(__file__).resolve().parents[1] / "config" / "default.yaml"
+        with open(default_path, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+        if not isinstance(data, dict):
+            raise ValueError("default config must be a mapping")
+        return data
 
-    def get_topic_names(self) -> Dict[str, Optional[str]]:
-        """Return input topic and derived output prefixes."""
-        return {
-            "input_topic": self._config.get("input_topic"),
-            "critical_prefix": self._config.get("critical_topic_prefix"),
-            "noncritical_prefix": self._config.get("noncritical_topic_prefix"),
-        }
-
-    def get_qos_mapping(self) -> Dict[str, str]:
-        """Return mapping of logical QoS roles to profile names."""
-        return self._config.get("qos_profiles", {})
-
-    def get_probe_config(self) -> Dict[str, Any]:
-        return self._config.get("probe", {})
-
-    def is_node_forced_critical(self, node_name: str) -> bool:
-        """
-        Check overrides for a node name that must always be considered critical.
-        The 'overrides' field in YAML is expected to be a mapping: {node_name: {critical: true}}
-        """
-        overrides = self._config.get("overrides", {})
-        entry = overrides.get(node_name, {})
-        return bool(entry.get("critical", False))
+    def _normalize(self, raw: dict[str, Any]) -> dict[str, Any]:
+        if self._looks_legacy(raw):
+            warnings.warn(
+                "Legacy config format detected (input_topic/critical_topic_prefix/noncritical_topic_prefix/probe). "
+                "Please migrate to Step 2 schema.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return self._legacy_to_modern(raw)
+        return raw
 
     @staticmethod
-    def _deep_merge(base: Dict[str, Any], dest: Dict[str, Any]) -> None:
-        """
-        Mutate dest in place by inserting missing keys from base.
-        Only fills missing keys; does not override user values.
-        """
-        for k, v in base.items():
-            if k not in dest:
-                dest[k] = v
-            else:
-                if isinstance(v, dict) and isinstance(dest.get(k), dict):
-                    ConfigManager._deep_merge(v, dest[k])
+    def _looks_legacy(raw: dict[str, Any]) -> bool:
+        return "topics" not in raw and (
+            "input_topic" in raw or "critical_topic_prefix" in raw or "noncritical_topic_prefix" in raw or "probe" in raw
+        )
+
+    @staticmethod
+    def _legacy_to_modern(raw: dict[str, Any]) -> dict[str, Any]:
+        input_topic = raw.get("input_topic", "/scan")
+        crit_prefix = raw.get("critical_topic_prefix", "/adaptive_bridge/critical")
+        noncrit_prefix = raw.get("noncritical_topic_prefix", "/adaptive_bridge/noncritical")
+        base_name = (str(input_topic).strip("/") or "topic").replace("/", "_")
+        probe = raw.get("probe", {})
+        qos = raw.get("qos_profiles", {})
+        return {
+            "topics": [
+                {
+                    "id": "scan_main",
+                    "input_topic": input_topic,
+                    "critical_output": f"{crit_prefix}/{base_name}",
+                    "noncritical_output": f"{noncrit_prefix}/{base_name}",
+                    "qos_overrides": {},
+                }
+            ],
+            "qos_profiles": {
+                "reliable_depth10": {
+                    "reliability": "RELIABLE",
+                    "history": "KEEP_LAST",
+                    "depth": 10,
+                    "durability": "VOLATILE",
+                },
+                "besteffort_depth5_lifespan500ms": {
+                    "reliability": "BEST_EFFORT",
+                    "history": "KEEP_LAST",
+                    "depth": 5,
+                    "durability": "VOLATILE",
+                    "lifespan_ms": 500,
+                },
+                "besteffort_depth5": {
+                    "reliability": "BEST_EFFORT",
+                    "history": "KEEP_LAST",
+                    "depth": 5,
+                    "durability": "VOLATILE",
+                },
+            },
+            "topic_qos_profiles": {
+                "scan_main": {
+                    "critical": qos.get("critical", "reliable_depth10"),
+                    "noncritical": qos.get("noncritical", "besteffort_depth5_lifespan500ms"),
+                }
+            },
+            "classifier": {
+                "enabled": True,
+                "evaluate_rate_hz": 1.0,
+                "demote_loss_threshold": 0.1,
+                "promote_loss_threshold": 0.03,
+                "demote_rtt_ms": 120.0,
+                "promote_rtt_ms": 60.0,
+                "hysteresis_count": int(probe.get("hysteresis_count", 3)),
+                "allow_unknown_state": True,
+            },
+            "probes": {
+                "enabled": bool(probe.get("enabled", True)),
+                "rate_hz": float(probe.get("rate_hz", 5.0)),
+                "rtt_threshold_ms": float(probe.get("rtt_threshold_ms", 100.0)),
+                "loss_threshold": float(probe.get("loss_threshold", 0.05)),
+                "jitter_threshold_ms": 25.0,
+                "window_size": 50,
+                "hysteresis_count": int(probe.get("hysteresis_count", 3)),
+                "request_topic": "/adaptive_bridge/probe_req",
+                "response_topic": "/adaptive_bridge/probe_resp",
+            },
+            "routing_policy": {
+                "critical_always_forward": True,
+                "noncritical_enabled": True,
+                "noncritical_max_rate_hz": 10.0,
+                "noncritical_drop_policy": "drop_oldest",
+                "stale_threshold_ms": 500,
+            },
+            "safety": {
+                "preserve_critical_path": True,
+                "allow_noncritical_degrade": True,
+                "max_noncritical_queue": 50,
+                "overload_drop_noncritical_first": True,
+            },
+            "security": {
+                "trust_mode": "default_deny",
+                "allow_legacy_node_name_overrides": True,
+                "enable_probe_hmac": False,
+                "max_probe_rate_hz": 20.0,
+            },
+            "diagnostics": {
+                "enabled": True,
+                "publish_interval_s": 1.0,
+                "topic": "/adaptive_bridge/diagnostics",
+                "verbosity": "info",
+            },
+            "overrides": raw.get("overrides", {}),
+        }
+
+    def _cfg(self) -> BridgeConfig:
+        if self._config is None:
+            raise RuntimeError("config was not loaded")
+        return self._config
+
+    def get_topics(self) -> list[TopicConfig]:
+        return list(self._cfg().topics)
+
+    def get_qos_policy(self, role: str, topic_id: str) -> QoSPolicy:
+        mapping = self._cfg().topic_qos_profiles.get(topic_id)
+        if mapping is None:
+            raise ValueError(f"unknown topic_id: {topic_id}")
+        if role not in {"critical", "noncritical"}:
+            raise ValueError("role must be 'critical' or 'noncritical'")
+        profile_name = mapping[role]
+        return self._cfg().qos_profiles[profile_name]
+
+    def get_classifier_config(self) -> ClassifierConfig:
+        return self._cfg().classifier
+
+    def get_probe_config(self) -> ProbeConfig:
+        return self._cfg().probes
+
+    def get_safety_config(self) -> SafetyConfig:
+        return self._cfg().safety
+
+    def get_security_config(self) -> SecurityConfig:
+        return self._cfg().security
+
+    def is_node_forced_critical(self, node_name: str) -> bool:
+        entry = self._cfg().overrides.get(node_name, {})
+        if not isinstance(entry, dict):
+            return False
+        return bool(entry.get("critical", False))

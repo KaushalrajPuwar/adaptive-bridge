@@ -1,0 +1,18 @@
+reliable_depth10:
+  reliability: RELIABLE
+  history: KEEP_LAST
+  depth: 10
+  durability: VOLATILE
+
+besteffort_depth5_lifespan500ms:
+  reliability: BEST_EFFORT
+  history: KEEP_LAST
+  depth: 5
+  durability: VOLATILE
+  lifespan_ms: 500
+
+besteffort_depth5:
+  reliability: BEST_EFFORT
+  history: KEEP_LAST
+  depth: 5
+  durability: VOLATILE

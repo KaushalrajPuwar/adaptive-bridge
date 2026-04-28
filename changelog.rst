@@ -31,6 +31,15 @@ Step 1 Completion (Repository Hygiene and Build Determinism)
 - Empty smoke-test blind spots removed (`src/tests/*` populated).
 - Config asset packaging path validated with `src/adaptive_bridge/config/default.yaml`.
 
+Step 2 Completion (Configuration Contract and Schema Validation)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Introduced typed configuration contract via `adaptive_bridge/config_types.py`.
+- Reworked `ConfigManager` to load/normalize/validate strict schema and expose typed getters.
+- Added backward compatibility mode for legacy keys with `DeprecationWarning`.
+- Added `minimal.yaml` and `stress.yaml` sample configs and upgraded `default.yaml` to full Step 2 schema.
+- Added validation-focused tests for missing sections, bad thresholds/rates, unknown QoS profiles, duplicate topic IDs, and legacy compatibility path.
+
 Architecture & Core Design
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

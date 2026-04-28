@@ -30,48 +30,48 @@ topic_qos_profiles:
 
 classifier:
   enabled: true
-  evaluate_rate_hz: 1.0
-  demote_loss_threshold: 0.10
-  promote_loss_threshold: 0.03
-  demote_rtt_ms: 120.0
-  promote_rtt_ms: 60.0
-  hysteresis_count: 3
-  allow_unknown_state: true
+  evaluate_rate_hz: 5.0
+  demote_loss_threshold: 0.06
+  promote_loss_threshold: 0.02
+  demote_rtt_ms: 90.0
+  promote_rtt_ms: 40.0
+  hysteresis_count: 5
+  allow_unknown_state: false
 
 probes:
   enabled: true
-  rate_hz: 5.0
-  rtt_threshold_ms: 100.0
-  loss_threshold: 0.05
-  jitter_threshold_ms: 25.0
-  window_size: 50
-  hysteresis_count: 3
+  rate_hz: 10.0
+  rtt_threshold_ms: 80.0
+  loss_threshold: 0.04
+  jitter_threshold_ms: 15.0
+  window_size: 80
+  hysteresis_count: 5
   request_topic: "/adaptive_bridge/probe_req"
   response_topic: "/adaptive_bridge/probe_resp"
 
 routing_policy:
   critical_always_forward: true
   noncritical_enabled: true
-  noncritical_max_rate_hz: 10.0
-  noncritical_drop_policy: "drop_oldest"
-  stale_threshold_ms: 500
+  noncritical_max_rate_hz: 3.0
+  noncritical_drop_policy: "drop_stale"
+  stale_threshold_ms: 300
 
 safety:
   preserve_critical_path: true
   allow_noncritical_degrade: true
-  max_noncritical_queue: 50
+  max_noncritical_queue: 10
   overload_drop_noncritical_first: true
 
 security:
   trust_mode: "default_deny"
-  allow_legacy_node_name_overrides: true
-  enable_probe_hmac: false
-  max_probe_rate_hz: 20.0
+  allow_legacy_node_name_overrides: false
+  enable_probe_hmac: true
+  max_probe_rate_hz: 15.0
 
 diagnostics:
   enabled: true
-  publish_interval_s: 1.0
+  publish_interval_s: 0.5
   topic: "/adaptive_bridge/diagnostics"
-  verbosity: "info"
+  verbosity: "debug"
 
 overrides: {}

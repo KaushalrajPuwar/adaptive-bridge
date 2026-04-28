@@ -3,10 +3,10 @@ import time
 from typing import Callable, Optional
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
+from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy, QoSDurabilityPolicy
 from sensor_msgs.msg import LaserScan
 from .config_manager import ConfigManager
-from .qos_manager import QoSManager
+from .config_types import QoSPolicy
 
 
 class ProxyNode(Node):
@@ -28,27 +28,15 @@ class ProxyNode(Node):
             "config_path").get_parameter_value().string_value
         self.config = config or ConfigManager(cp)
 
-        # qos manager
-        self.qos_mgr = QoSManager()
+        topics = self.config.get_topics()
+        route = topics[0]
+        self._topic_id = route.id
+        self._input_topic = route.input_topic
+        self._crit_topic = route.critical_output
+        self._noncrit_topic = route.noncritical_output
 
-        topics = self.config.get_topic_names()
-        self._input_topic = topics["input_topic"]
-        crit_prefix = topics["critical_prefix"]
-        noncrit_prefix = topics["noncritical_prefix"]
-
-        # determine output topic names
-        # for generality we strip leading slash and create safe names
-        self._input_topic = topics.get("input_topic") or "/input"
-        base_name = (self._input_topic or "/input").strip("/").replace("/", "_") or "topic"
-        self._crit_topic = f"{crit_prefix}/{base_name}"
-        self._noncrit_topic = f"{noncrit_prefix}/{base_name}"
-
-        # Select QoS profiles from config
-        qos_map = self.config.get_qos_mapping()
-        self._crit_qos = self.qos_mgr.get(
-            qos_map.get("critical", "reliable_depth10"))
-        self._noncrit_qos = self.qos_mgr.get(
-            qos_map.get("noncritical", "besteffort_depth5"))
+        self._crit_qos = self._to_rclpy_qos(self.config.get_qos_policy("critical", self._topic_id))
+        self._noncrit_qos = self._to_rclpy_qos(self.config.get_qos_policy("noncritical", self._topic_id))
 
         # Pre-create publishers (prevents discovery churn at runtime)
         self.pub_crit = self.create_publisher(
@@ -68,6 +56,21 @@ class ProxyNode(Node):
 
         self.get_logger().info(
             f"Proxy listening: in='{self._input_topic}' out_crit='{self._crit_topic}' out_noncrit='{self._noncrit_topic}'")
+
+    @staticmethod
+    def _to_rclpy_qos(policy: QoSPolicy) -> QoSProfile:
+        history = QoSHistoryPolicy.KEEP_LAST if policy.history == "KEEP_LAST" else QoSHistoryPolicy.KEEP_ALL
+        reliability = (
+            QoSReliabilityPolicy.RELIABLE
+            if policy.reliability == "RELIABLE"
+            else QoSReliabilityPolicy.BEST_EFFORT
+        )
+        durability = (
+            QoSDurabilityPolicy.VOLATILE
+            if policy.durability == "VOLATILE"
+            else QoSDurabilityPolicy.TRANSIENT_LOCAL
+        )
+        return QoSProfile(history=history, depth=policy.depth, reliability=reliability, durability=durability)
 
     def _on_message(self, msg: LaserScan) -> None:
         # Simple forwarding policy: publish to critical always; noncritical optionally

@@ -11,12 +11,6 @@ qos_profiles:
     history: KEEP_LAST
     depth: 10
     durability: VOLATILE
-  besteffort_depth5_lifespan500ms:
-    reliability: BEST_EFFORT
-    history: KEEP_LAST
-    depth: 5
-    durability: VOLATILE
-    lifespan_ms: 500
   besteffort_depth5:
     reliability: BEST_EFFORT
     history: KEEP_LAST
@@ -26,7 +20,7 @@ qos_profiles:
 topic_qos_profiles:
   scan_main:
     critical: "reliable_depth10"
-    noncritical: "besteffort_depth5_lifespan500ms"
+    noncritical: "besteffort_depth5"
 
 classifier:
   enabled: true
@@ -40,11 +34,11 @@ classifier:
 
 probes:
   enabled: true
-  rate_hz: 5.0
-  rtt_threshold_ms: 100.0
-  loss_threshold: 0.05
-  jitter_threshold_ms: 25.0
-  window_size: 50
+  rate_hz: 2.0
+  rtt_threshold_ms: 120.0
+  loss_threshold: 0.10
+  jitter_threshold_ms: 30.0
+  window_size: 20
   hysteresis_count: 3
   request_topic: "/adaptive_bridge/probe_req"
   response_topic: "/adaptive_bridge/probe_resp"
@@ -52,21 +46,21 @@ probes:
 routing_policy:
   critical_always_forward: true
   noncritical_enabled: true
-  noncritical_max_rate_hz: 10.0
+  noncritical_max_rate_hz: 5.0
   noncritical_drop_policy: "drop_oldest"
-  stale_threshold_ms: 500
+  stale_threshold_ms: 600
 
 safety:
   preserve_critical_path: true
   allow_noncritical_degrade: true
-  max_noncritical_queue: 50
+  max_noncritical_queue: 20
   overload_drop_noncritical_first: true
 
 security:
   trust_mode: "default_deny"
   allow_legacy_node_name_overrides: true
   enable_probe_hmac: false
-  max_probe_rate_hz: 20.0
+  max_probe_rate_hz: 10.0
 
 diagnostics:
   enabled: true
