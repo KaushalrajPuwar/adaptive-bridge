@@ -167,6 +167,9 @@ class ConfigManager:
     def get_topics(self) -> list[TopicConfig]:
         return list(self._cfg().topics)
 
+    def get_topic_ids(self) -> list[str]:
+        return [topic.id for topic in self._cfg().topics]
+
     def get_qos_policy(self, role: str, topic_id: str) -> QoSPolicy:
         mapping = self._cfg().topic_qos_profiles.get(topic_id)
         if mapping is None:

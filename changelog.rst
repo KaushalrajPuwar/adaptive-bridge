@@ -49,6 +49,15 @@ Step 3 Completion (Internal Data Models and Topic Registry)
 - Updated diagnostics/classifier placeholder to align with Step 3 shared model contracts.
 - Expanded proxy-basic tests for registry/topic determinism, uniqueness failures, and model serialization behavior.
 
+Step 4 Completion (Proxy Core v2: Multi-Topic, Precreated Endpoints)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Upgraded proxy runtime to build all configured topic routes and pre-create per-topic subscribers plus critical/noncritical publishers at startup.
+- Added callback-factory forwarding path keyed by `topic_id`, with per-topic counters and periodic per-topic forwarding logs.
+- Added explicit safe shutdown cleanup for all pre-created subscribers and publishers.
+- Updated launch file to support explicit `config_path` launch argument for multi-topic configuration runs.
+- Expanded proxy tests to validate multi-topic route build ordering, callback topic isolation, and shutdown entity cleanup behavior.
+
 Architecture & Core Design
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

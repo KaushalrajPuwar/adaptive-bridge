@@ -7,7 +7,7 @@ from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy, QoSDur
 from sensor_msgs.msg import LaserScan
 from .config_manager import ConfigManager
 from .config_types import QoSPolicy
-from .models import TopicCounters
+from .models import TopicCounters, TopicRoute
 from .topic_registry import TopicRegistry
 
 
@@ -32,35 +32,15 @@ class ProxyNode(Node):
 
         topics = self.config.get_topics()
         self._registry = TopicRegistry()
-        self._registry.build_routes(topics)
-        route = self._registry.list_routes()[0]
-        self._topic_id = route.topic_id
-        self._route = route
-        self._input_topic = route.input_topic
-        self._crit_topic = route.critical_output
-        self._noncrit_topic = route.noncritical_output
+        self._routes = self._registry.build_routes(topics)
+        self._subscribers = {}
+        self._publishers_critical = {}
+        self._publishers_noncritical = {}
+        self._counters_by_topic = {topic_id: TopicCounters() for topic_id in self._routes}
 
-        self._crit_qos = self._to_rclpy_qos(self.config.get_qos_policy("critical", self._topic_id))
-        self._noncrit_qos = self._to_rclpy_qos(self.config.get_qos_policy("noncritical", self._topic_id))
-
-        # Pre-create publishers (prevents discovery churn at runtime)
-        self.pub_crit = self.create_publisher(
-            LaserScan, self._crit_topic, self._crit_qos)
-        self.pub_noncrit = self.create_publisher(
-            LaserScan, self._noncrit_topic, self._noncrit_qos)
-        
-        # Internal counters for metrics
-        self._counters = TopicCounters()
-
-        # Subscriber: use small queue depth to simulate real pipeline
-        sub_qos = QoSProfile(depth=10)
-        self.subscription = self.create_subscription(
-            LaserScan, self._input_topic, self._on_message, sub_qos
-        )
+        self._initialize_entities()
         self._last_log = time.time()
-
-        self.get_logger().info(
-            f"Proxy listening: in='{self._input_topic}' out_crit='{self._crit_topic}' out_noncrit='{self._noncrit_topic}'")
+        self._log_route_summary()
 
     @staticmethod
     def _to_rclpy_qos(policy: QoSPolicy) -> QoSProfile:
@@ -77,30 +57,68 @@ class ProxyNode(Node):
         )
         return QoSProfile(history=history, depth=policy.depth, reliability=reliability, durability=durability)
 
-    def _on_message(self, msg: LaserScan) -> None:
-        # Simple forwarding policy: publish to critical always; noncritical optionally
-        # Convert or annotate message if needed. For sprint we forward as-is.
-        try:
-            # Publish to critical path (RELIABLE)
-            self._counters.total_received += 1
-            self.pub_crit.publish(msg)
-            self._counters.total_forwarded_critical += 1
-            # Publish to non-critical (BEST_EFFORT)
-            self.pub_noncrit.publish(msg)
-            self._counters.total_forwarded_noncritical += 1
-        except Exception as e:
-            self.get_logger().error(f"Publish error: {e}")
+    def _initialize_entities(self) -> None:
+        """Pre-create all publishers/subscribers at startup; never create during callbacks."""
+        sub_qos = QoSProfile(depth=10)
+        for topic_id, route in self._routes.items():
+            crit_qos = self._to_rclpy_qos(self.config.get_qos_policy("critical", topic_id))
+            noncrit_qos = self._to_rclpy_qos(self.config.get_qos_policy("noncritical", topic_id))
+            self._publishers_critical[topic_id] = self.create_publisher(LaserScan, route.critical_output, crit_qos)
+            self._publishers_noncritical[topic_id] = self.create_publisher(LaserScan, route.noncritical_output, noncrit_qos)
+            self._subscribers[topic_id] = self.create_subscription(
+                LaserScan, route.input_topic, self._make_topic_callback(topic_id), sub_qos
+            )
 
-        # periodic log to show message flow (not every message)
+    def _log_route_summary(self) -> None:
+        for topic_id, route in self._routes.items():
+            self.get_logger().info(
+                f"Route initialized topic_id='{topic_id}' in='{route.input_topic}' "
+                f"out_crit='{route.critical_output}' out_noncrit='{route.noncritical_output}'"
+            )
+
+    def _make_topic_callback(self, topic_id: str) -> Callable[[LaserScan], None]:
+        def _cb(msg: LaserScan) -> None:
+            self._forward_message(topic_id, msg)
+        return _cb
+
+    def _forward_message(self, topic_id: str, msg: LaserScan) -> None:
+        # Keep forwarding path lock-minimal and callback-latency aware.
+        counters = self._counters_by_topic[topic_id]
+        try:
+            counters.total_received += 1
+            self._publishers_critical[topic_id].publish(msg)
+            counters.total_forwarded_critical += 1
+            self._publishers_noncritical[topic_id].publish(msg)
+            counters.total_forwarded_noncritical += 1
+        except Exception as e:
+            self.get_logger().error(f"Publish error for topic_id='{topic_id}': {e}")
+            counters.dropped_noncritical_queue += 1
+
         now = time.time()
         if now - self._last_log > 5.0:
-            self.get_logger().info(
-                "Forwarded "
-                f"{self._counters.total_forwarded_critical} critical / "
-                f"{self._counters.total_forwarded_noncritical} noncritical messages. "
-                f"(Latest scan: {len(msg.ranges)} points)"
-            )
+            self._log_periodic_counts()
             self._last_log = now
+
+    def _log_periodic_counts(self) -> None:
+        summary = []
+        for topic_id in self._routes:
+            c = self._counters_by_topic[topic_id]
+            summary.append(
+                f"{topic_id}:rx={c.total_received},crit={c.total_forwarded_critical},"
+                f"noncrit={c.total_forwarded_noncritical},drop_noncrit={c.dropped_noncritical_queue}"
+            )
+        self.get_logger().info("Forwarding counters | " + " | ".join(summary))
+
+    def _shutdown_entities(self) -> None:
+        for sub in self._subscribers.values():
+            self.destroy_subscription(sub)
+        for pub in self._publishers_critical.values():
+            self.destroy_publisher(pub)
+        for pub in self._publishers_noncritical.values():
+            self.destroy_publisher(pub)
+        self._subscribers.clear()
+        self._publishers_critical.clear()
+        self._publishers_noncritical.clear()
 
 
 def main(args=None):
@@ -109,6 +127,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     finally:
+        node._shutdown_entities()
         node.destroy_node()
         rclpy.shutdown()
 
