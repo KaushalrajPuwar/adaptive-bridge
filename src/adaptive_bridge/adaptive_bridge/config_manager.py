@@ -41,7 +41,14 @@ class ConfigManager:
             if not isinstance(data, dict):
                 raise ValueError("root config must be a mapping")
             return data
-        default_path = Path(__file__).resolve().parents[1] / "config" / "default.yaml"
+        try:
+            from ament_index_python.packages import get_package_share_directory
+            share_dir = get_package_share_directory('adaptive_bridge')
+            default_path = Path(share_dir) / "config" / "default.yaml"
+            if not default_path.is_file():
+                default_path = Path(__file__).resolve().parents[1] / "config" / "default.yaml"
+        except Exception:
+            default_path = Path(__file__).resolve().parents[1] / "config" / "default.yaml"
         with open(default_path, "r", encoding="utf-8") as fh:
             data = yaml.safe_load(fh) or {}
         if not isinstance(data, dict):

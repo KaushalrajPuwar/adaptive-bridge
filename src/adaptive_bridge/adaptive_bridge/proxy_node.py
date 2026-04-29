@@ -11,6 +11,8 @@ from .models import TopicCounters, TopicRoute
 from .topic_registry import TopicRegistry
 
 
+from .qos_manager import QoSManager
+
 class ProxyNode(Node):
     """
     Minimal adaptive bridge proxy for the sprint.
@@ -38,31 +40,30 @@ class ProxyNode(Node):
         self._publishers_noncritical = {}
         self._counters_by_topic = {topic_id: TopicCounters() for topic_id in self._routes}
 
+        qos_raw = {}
+        for name, policy in self.config._cfg().qos_profiles.items():
+            qos_raw[name] = {
+                "reliability": policy.reliability,
+                "history": policy.history,
+                "depth": policy.depth,
+                "durability": policy.durability,
+                "lifespan_ms": policy.lifespan_ms
+            }
+        self.qos_manager = QoSManager(
+            qos_profiles=qos_raw,
+            topic_qos_profiles=self.config._cfg().topic_qos_profiles
+        )
+
         self._initialize_entities()
         self._last_log = time.time()
         self._log_route_summary()
-
-    @staticmethod
-    def _to_rclpy_qos(policy: QoSPolicy) -> QoSProfile:
-        history = QoSHistoryPolicy.KEEP_LAST if policy.history == "KEEP_LAST" else QoSHistoryPolicy.KEEP_ALL
-        reliability = (
-            QoSReliabilityPolicy.RELIABLE
-            if policy.reliability == "RELIABLE"
-            else QoSReliabilityPolicy.BEST_EFFORT
-        )
-        durability = (
-            QoSDurabilityPolicy.VOLATILE
-            if policy.durability == "VOLATILE"
-            else QoSDurabilityPolicy.TRANSIENT_LOCAL
-        )
-        return QoSProfile(history=history, depth=policy.depth, reliability=reliability, durability=durability)
 
     def _initialize_entities(self) -> None:
         """Pre-create all publishers/subscribers at startup; never create during callbacks."""
         sub_qos = QoSProfile(depth=10)
         for topic_id, route in self._routes.items():
-            crit_qos = self._to_rclpy_qos(self.config.get_qos_policy("critical", topic_id))
-            noncrit_qos = self._to_rclpy_qos(self.config.get_qos_policy("noncritical", topic_id))
+            crit_qos = self.qos_manager.resolve(topic_id, "critical")
+            noncrit_qos = self.qos_manager.resolve(topic_id, "noncritical")
             self._publishers_critical[topic_id] = self.create_publisher(LaserScan, route.critical_output, crit_qos)
             self._publishers_noncritical[topic_id] = self.create_publisher(LaserScan, route.noncritical_output, noncrit_qos)
             self._subscribers[topic_id] = self.create_subscription(
