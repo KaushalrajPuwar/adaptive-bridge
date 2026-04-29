@@ -102,9 +102,21 @@ def test_proxy_module_imports_when_rclpy_available() -> None:
 
 
 def test_proxy_callback_updates_only_target_topic() -> None:
+    """Verify callback increments only the target topic's counters.
+
+    Since Step 6, noncritical messages go through a background queue+thread
+    rather than publishing directly in the callback.  Therefore we verify:
+      - total_received and total_forwarded_critical are incremented in-callback.
+      - critical publisher for topic 'a' is called.
+      - topic 'b' is completely untouched.
+    The noncritical queue is mocked to accept items without a real thread.
+    """
+    import queue as _queue
     pytest.importorskip("rclpy")
     proxy_module = importlib.import_module("adaptive_bridge.proxy_node")
     ProxyNode = proxy_module.ProxyNode
+    from adaptive_bridge.noncritical_policy import NoncriticalPolicyEngine, DropStats
+    from adaptive_bridge.models import PolicyMode
 
     class _FakePub:
         def __init__(self) -> None:
@@ -117,41 +129,79 @@ def test_proxy_callback_updates_only_target_topic() -> None:
         def info(self, _msg) -> None:
             pass
 
+        def debug(self, _msg) -> None:
+            pass
+
         def error(self, _msg) -> None:
             pass
+
+    # Minimal policy engine stub that always allows publish
+    class _FakePolicy:
+        def allow_publish(self, topic_id, msg_ts_ns, now_ns=None):
+            return True, None
+
+        def record_drop(self, topic_id, reason):
+            pass
+
+        @property
+        def _mode(self):
+            return {}
+
+        def get_stats(self, topic_id):
+            return DropStats()
 
     node = ProxyNode.__new__(ProxyNode)
     node._routes = {"a": object(), "b": object()}
     node._counters_by_topic = {"a": TopicCounters(), "b": TopicCounters()}
     node._publishers_critical = {"a": _FakePub(), "b": _FakePub()}
     node._publishers_noncritical = {"a": _FakePub(), "b": _FakePub()}
-    node._last_log = 10**9
+    node._noncritical_queues = {"a": _queue.Queue(maxsize=50), "b": _queue.Queue(maxsize=50)}
+    node.policy_engine = _FakePolicy()
     node.get_logger = lambda: _Logger()
 
     cb = node._make_topic_callback("a")
     cb(object())
 
+    # Critical path: incremented inline in callback
     assert node._counters_by_topic["a"].total_received == 1
     assert node._counters_by_topic["a"].total_forwarded_critical == 1
-    assert node._counters_by_topic["a"].total_forwarded_noncritical == 1
+    # Noncritical: enqueued (not yet published — worker thread is not running)
+    assert node._noncritical_queues["a"].qsize() == 1, (
+        "Expected noncritical message to be enqueued"
+    )
+    # Topic 'b' must be completely untouched
     assert node._counters_by_topic["b"].total_received == 0
     assert node._publishers_critical["a"].calls == 1
     assert node._publishers_critical["b"].calls == 0
-    assert node._publishers_noncritical["a"].calls == 1
     assert node._publishers_noncritical["b"].calls == 0
 
 
 def test_proxy_shutdown_clears_all_entities() -> None:
+    """Verify _shutdown_entities destroys all pre-created ROS entities.
+
+    Since Step 6/7 the proxy also has _noncritical_threads and _diag_timer;
+    these must be stubbed so the test works without a real ROS context.
+    """
+    import threading
     pytest.importorskip("rclpy")
     proxy_module = importlib.import_module("adaptive_bridge.proxy_node")
     ProxyNode = proxy_module.ProxyNode
 
+    class _FakeTimer:
+        def cancel(self):
+            pass
+
     node = ProxyNode.__new__(ProxyNode)
     destroyed_subscribers = []
     destroyed_publishers = []
+    node._running = True
     node._subscribers = {"a": object(), "b": object(), "c": object()}
     node._publishers_critical = {"a": object(), "b": object(), "c": object()}
     node._publishers_noncritical = {"a": object(), "b": object(), "c": object()}
+    # Step 6 additions
+    node._noncritical_threads = {}  # no real threads to join
+    # Step 7 addition
+    node._diag_timer = _FakeTimer()
     node.destroy_subscription = lambda sub: destroyed_subscribers.append(sub)
     node.destroy_publisher = lambda pub: destroyed_publishers.append(pub)
 
