@@ -103,11 +103,49 @@ dual critical/noncritical output streams, and supporting utilities.
 - Updated proxy_node.py docstring to reflect cumulative feature scope
   across all development phases.
 
+2026-05-01 — Classifier Node Runtime Integration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fully wired classifier_node: embeds ProbeClient for active metric
+  ingestion, runs periodic evaluation timer at configured evaluate_rate_hz,
+  publishes ClassificationDecision JSON to /adaptive_bridge/classifier/state.
+- Added config_manager.get_probe_config() public method.
+- Added stats_to_probe_metrics() converter in utils/probes.py to bridge
+  ProbeClient.get_stats() dict to ProbeMetrics dataclass.
+- Published payload includes: subscriber_id, state, reason, ts_ns,
+  avg_rtt_ms, loss, hysteresis_counter, consecutive_good, eval_count,
+  error_count, and confidence (reserved).
+- Classifier output topic contract documented in
+  docs/05_CLASSIFIER_AND_PROBES.md.
+- Integration tests: 9 tests covering lifecycle, decision publishing,
+  payload structure, state validation, monotonic counters, robustness
+  (no-responder operation, recovery after responder appears), and
+  metrics conversion.
+
+2026-05-01 — Proxy + Classifier Policy Coupling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Created PolicyEngine: maps classifier subscriber states to per-topic
+  PolicyMode with transition damping (hysteresis_count windows) and
+  safety bias (UNKNOWN -> CRITICAL -> NORMAL mode).
+- ProxyNode subscribes to /adaptive_bridge/classifier/state and drives
+  NoncriticalPolicyEngine mode changes from classifier output.
+- Refactored all 5 config._cfg() calls in proxy_node.py to use public
+  ConfigManager API (get_qos_profiles_dict, get_topic_qos_profiles_dict,
+  get_bridge_config, get_diagnostics_config, get_safety_config).
+- Fixed BridgeConfig import source in noncritical_policy.py
+  (config_manager -> config_types).
+- Added missing type annotation to noncritical_policy._init_topic.
+- Policy transition snapshots injected into diagnostics payload.
+- 12 unit tests covering policy engine damping, safety bias, forced-critical
+  override, and diagnostics snapshot.
+
 Known Gaps (Deferred)
 ~~~~~~~~~~~~~~~~~~~~~
 
-- proxy_node.py has 5 remaining self.config._cfg() private attribute
-  accesses — see docs/11_DECISIONS_LOG.md D029.
+- proxy_node.py's 5 remaining self.config._cfg() private attribute
+  accesses have been resolved in Step 11 via new public ConfigManager
+  getters.
 - noncritical_policy.py imports BridgeConfig from config_manager instead
   of config_types.
 - Missing return type annotations in noncritical_policy.py and

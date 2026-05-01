@@ -37,12 +37,32 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
+from ..classifier_types import ProbeMetrics
+
 PROBE_PROTOCOL_VERSION = 1
 PROBE_REQ_DEFAULT_TOPIC = "/adaptive_bridge/probe_req"
 PROBE_RESP_DEFAULT_TOPIC = "/adaptive_bridge/probe_resp"
 DEFAULT_TIMEOUT_MS = 500
 DEFAULT_WINDOW_SIZE = 50
 DEFAULT_RATE_HZ = 5.0
+
+
+def stats_to_probe_metrics(stats: dict) -> ProbeMetrics:
+    """Convert ProbeClient.get_stats() dict to ProbeMetrics dataclass.
+
+    Bridges the probe subsystem's rolling-window aggregate dict
+    into the classifier's typed input contract.
+    """
+    rtt = stats.get("rtt", {})
+    jitter = stats.get("jitter", {})
+
+    return ProbeMetrics(
+        avg_rtt_ms=float(rtt.get("mean_ms", 0.0)),
+        loss=float(stats.get("loss_rate", 0.0)),
+        sample_count=int(rtt.get("count", 0)),
+        p95_rtt_ms=float(rtt.get("p95_ms", 0.0)),
+        jitter_ms=float(jitter.get("mean_ms", 0.0)),
+    )
 
 
 class ProbeClient(Node):

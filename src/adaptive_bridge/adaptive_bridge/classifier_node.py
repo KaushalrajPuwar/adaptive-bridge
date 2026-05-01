@@ -1,32 +1,32 @@
 # classifier_node.py
 """
-Adaptive Bridge Classifier Node — Step 9 upgrade.
+Adaptive Bridge Classifier Node — Step 10 Runtime Integration.
 
-Step 9 delivers the pure-Python classifier core (classifier_core.py).
-This module is the thin ROS entrypoint shell that wraps it.
+Embeds ProbeClient for active metric ingestion, runs periodic classifier
+evaluation at configurable rate, and publishes ClassificationDecision
+JSON payloads to /adaptive_bridge/classifier/state.
 
-Current state:
-  - Holds a SubscriberClassifier instance (ready for Step 10 wiring).
-  - Starts and shuts down cleanly in a live ROS2 session.
-  - Does NOT yet subscribe to probe topics or publish decisions — that
-    is Step 10 (Classifier Node Runtime Integration).
-
-Step 10 will:
-  - Subscribe to /adaptive_bridge/probe_resp
-  - Run a periodic evaluation timer
-  - Publish to /adaptive_bridge/classifier/state
+Architecture:
+  ProbeClient (probe req/resp) -> get_stats() -> ProbeMetrics
+    -> SubscriberClassifier.update() -> ClassificationDecision
+    -> JSON publish on /adaptive_bridge/classifier/state
 """
+
+import json
+import time
 
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import String
 
 from .classifier_core import SubscriberClassifier
-from .classifier_types import ProbeMetrics
+from .classifier_types import ALL_STATES
 from .config_manager import ConfigManager
+from .utils.probes import ProbeClient, stats_to_probe_metrics
 
 
 class ClassifierNode(Node):
-    """Classifier node shell — core logic ready, ROS wiring pending Step 10."""
+    """Classifier node with runtime probe ingestion and decision publishing."""
 
     def __init__(self, config_path: str = "") -> None:
         super().__init__("adaptive_bridge_classifier")
@@ -35,6 +35,7 @@ class ClassifierNode(Node):
         cp = self.get_parameter("config_path").get_parameter_value().string_value
         self._config_manager = ConfigManager(cp)
         clf_cfg = self._config_manager.get_classifier_config()
+        probe_cfg = self._config_manager.get_probe_config()
         forced_ids = self._config_manager.get_forced_critical_ids()
 
         self._classifier = SubscriberClassifier(
@@ -42,17 +43,93 @@ class ClassifierNode(Node):
             forced_critical_ids=forced_ids if forced_ids else None,
         )
 
-        self.get_logger().info(
-            f"ClassifierNode ready — core logic loaded "
-            f"(hysteresis={clf_cfg.hysteresis_count}, "
-            f"demote_rtt={clf_cfg.demote_rtt_ms}ms, "
-            f"demote_loss={clf_cfg.demote_loss_threshold:.0%}). "
-            f"ROS probe/decision wiring pending Step 10."
+        self._probe_client = ProbeClient(
+            node_name="adaptive_bridge_classifier_probe",
+            rate_hz=probe_cfg.rate_hz,
+            window_size=probe_cfg.window_size,
+            timeout_ms=probe_cfg.timeout_ms,
+            request_topic=probe_cfg.request_topic,
+            response_topic=probe_cfg.response_topic,
+        )
+        self._probe_client.start()
+
+        self._state_pub = self.create_publisher(
+            String, "/adaptive_bridge/classifier/state", 10
         )
 
+        eval_period = 1.0 / max(0.1, clf_cfg.evaluate_rate_hz)
+        self._eval_timer = self.create_timer(eval_period, self._on_evaluate)
+
+        self._eval_count: int = 0
+        self._error_count: int = 0
+        self._last_eval_ts_ns: int = 0
+
+        self.get_logger().info(
+            f"ClassifierNode active — "
+            f"eval={clf_cfg.evaluate_rate_hz}Hz, "
+            f"hysteresis={clf_cfg.hysteresis_count}, "
+            f"demote_rtt={clf_cfg.demote_rtt_ms}ms, "
+            f"demote_loss={clf_cfg.demote_loss_threshold:.0%}, "
+            f"probe_req={probe_cfg.request_topic}, "
+            f"probe_resp={probe_cfg.response_topic}, "
+            f"state_topic=/adaptive_bridge/classifier/state, "
+            f"allow_unknown={clf_cfg.allow_unknown_state}"
+        )
+
+    def _on_evaluate(self) -> None:
+        """Periodic evaluation: sample probes -> classify -> publish."""
+        self._eval_count += 1
+        now_ns = time.monotonic_ns()
+        self._last_eval_ts_ns = now_ns
+
+        try:
+            stats = self._probe_client.get_stats()
+            metrics = stats_to_probe_metrics(stats)
+
+            subscriber_id = self._probe_client._sender_id
+            decision = self._classifier.update(subscriber_id, metrics, now_ns=now_ns)
+
+            payload_dict = decision.to_dict()
+            payload_dict["eval_count"] = self._eval_count
+            payload_dict["error_count"] = self._error_count
+            payload_dict["confidence"] = None
+
+            msg = String()
+            msg.data = json.dumps(payload_dict)
+            self._state_pub.publish(msg)
+
+        except Exception as e:
+            self._error_count += 1
+            self.get_logger().error(
+                f"Classifier evaluation error (eval #{self._eval_count}): {e}"
+            )
+
     def get_classifier(self) -> SubscriberClassifier:
-        """Expose the core classifier for Step 10 wiring."""
+        """Expose the core classifier for diagnostics and integration."""
         return self._classifier
+
+    def get_probe_client(self) -> ProbeClient:
+        """Expose the probe client for inspection in tests and diagnostics."""
+        return self._probe_client
+
+    def get_error_count(self) -> int:
+        """Return cumulative evaluation error count."""
+        return self._error_count
+
+    def get_eval_count(self) -> int:
+        """Return cumulative evaluation cycle count."""
+        return self._eval_count
+
+    def destroy(self) -> None:
+        try:
+            self._probe_client.stop()
+        except Exception:
+            pass
+        try:
+            self._probe_client.destroy()
+        except Exception:
+            pass
+        super().destroy_node()
 
 
 def main(args=None) -> None:

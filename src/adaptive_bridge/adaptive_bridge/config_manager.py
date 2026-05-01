@@ -10,6 +10,7 @@ import yaml
 from .config_types import (
     BridgeConfig,
     ClassifierConfig,
+    DiagnosticsConfig,
     ProbeConfig,
     QoSPolicy,
     SafetyConfig,
@@ -213,3 +214,33 @@ class ConfigManager:
             for node_name, entry in overrides.items()
             if isinstance(entry, dict) and entry.get("critical", False)
         }
+
+    def get_qos_profiles_dict(self) -> dict:
+        """Return raw QoS profile dicts for QoSManager."""
+        return {
+            name: {
+                "reliability": policy.reliability,
+                "history": policy.history,
+                "depth": policy.depth,
+                "durability": policy.durability,
+                "lifespan_ms": policy.lifespan_ms,
+            }
+            for name, policy in self._cfg().qos_profiles.items()
+        }
+
+    def get_topic_qos_profiles_dict(self) -> dict:
+        """Return topic->profile-name mapping dict."""
+        return dict(self._cfg().topic_qos_profiles)
+
+    def get_bridge_config(self) -> BridgeConfig:
+        """Return the full typed config (replaces _cfg() entirely)."""
+        return self._cfg()
+
+    def get_diagnostics_config(self) -> DiagnosticsConfig:
+        """Return the diagnostics subsection."""
+        return self._cfg().diagnostics
+
+    def get_safety_config(self) -> SafetyConfig:
+        """Return the safety subsection."""
+        return self._cfg().safety
+

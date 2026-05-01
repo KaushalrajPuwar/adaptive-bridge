@@ -1,13 +1,14 @@
 # src/adaptive_bridge/adaptive_bridge/proxy_node.py
 """
-Adaptive Bridge ProxyNode — Steps 4–8 cumulative upgrades.
+Adaptive Bridge ProxyNode — Step 11 Policy Coupling upgrade.
 
-Changes from Step 6:
-  - Embeds DiagnosticsCollector (pure Python) + owns ROS diag publisher/timer.
-  - Replaces ad-hoc _log_periodic_counts/_last_log with proper ROS timer.
-  - Snapshots per-topic counters, drop stats, QoS profiles, global mode on tick.
-  - Global mode = "NORMAL" until SafetySupervisor (Step 12).
-  - Classifier snapshot = {} until ClassifierNode (Step 10).
+Wires classifier decisions into runtime noncritical degradation:
+  - Subscribes to /adaptive_bridge/classifier/state
+  - PolicyEngine maps subscriber states -> per-topic PolicyMode
+  - NoncriticalPolicyEngine applies rate limiting based on mode
+  - Transition damping prevents oscillation (hysteresis_count windows)
+  - Safety bias: UNKNOWN -> treat as CRITICAL -> NORMAL mode
+  - Refactored all config access to public ConfigManager API
 
 History:
   Step 4: Multi-topic proxy with precreated endpoints.
@@ -15,10 +16,7 @@ History:
   Step 6: NoncriticalPolicyEngine with token-bucket rate limiting.
   Step 7: DiagnosticsCollector + ROS diagnostics publisher/timer.
   Step 8: Probe protocol v1 (client/responder in utils/probes.py; no proxy changes).
-
-TODO (Step 11, task 6): Replace all self.config._cfg() calls with public
-ConfigManager getters.  See docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md
-Step 11 — Technical Tasks point 6 for detail.
+  Step 11: Policy coupling: classifier sub + PolicyEngine + mode-driven degradation.
 """
 
 import json
@@ -38,6 +36,7 @@ from .models import TopicCounters, TopicRoute
 from .topic_registry import TopicRegistry
 from .qos_manager import QoSManager
 from .noncritical_policy import NoncriticalPolicyEngine
+from .policy_engine import PolicyEngine
 from .diagnostics import DiagnosticsCollector
 
 
@@ -51,6 +50,7 @@ class ProxyNode(Node):
       - On message arrival: publishes to critical immediately; enqueues noncritical.
       - Background worker thread per topic drains the noncritical queue.
       - NoncriticalPolicyEngine enforces rate limiting, staleness, queue-overflow drops.
+      - PolicyEngine drives mode changes from classifier decisions.
       - DiagnosticsCollector aggregates runtime state; ProxyNode owns the ROS
         publisher + timer and calls gather_payload() + publish on each tick.
         Publish failures are never fatal.
@@ -78,24 +78,20 @@ class ProxyNode(Node):
         self._noncritical_queues: dict = {}
         self._noncritical_threads: dict = {}
 
-        # QoS manager
-        qos_raw = {}
-        for name, policy in self.config._cfg().qos_profiles.items():
-            qos_raw[name] = {
-                "reliability": policy.reliability,
-                "history": policy.history,
-                "depth": policy.depth,
-                "durability": policy.durability,
-                "lifespan_ms": policy.lifespan_ms,
-            }
+        # QoS manager (public ConfigManager API)
         self.qos_manager = QoSManager(
-            qos_profiles=qos_raw,
-            topic_qos_profiles=self.config._cfg().topic_qos_profiles,
+            qos_profiles=self.config.get_qos_profiles_dict(),
+            topic_qos_profiles=self.config.get_topic_qos_profiles_dict(),
         )
+        full_cfg = self.config.get_bridge_config()
 
-        # Noncritical policy engine
-        self.policy_engine = NoncriticalPolicyEngine(
-            self.config._cfg(), self.qos_manager
+        # Noncritical policy engine (low-level rate limiter)
+        self._nc_policy = NoncriticalPolicyEngine(full_cfg, self.qos_manager)
+
+        # High-level policy engine (classifier -> mode mapping)
+        self._policy_engine = PolicyEngine(
+            hysteresis_count=full_cfg.classifier.hysteresis_count,
+            forced_critical_ids=self.config.get_forced_critical_ids(),
         )
 
         # Global mode (extended by SafetySupervisor in Step 12)
@@ -112,8 +108,8 @@ class ProxyNode(Node):
                 desc = self.qos_manager.describe(topic_id, role)
                 self._diag_collector.ingest_qos_snapshot(topic_id, role, desc)
 
-        # Diagnostics ROS publisher + timer (owned by ProxyNode)
-        diag_cfg = self.config._cfg().diagnostics
+        # Diagnostics ROS publisher + timer (public ConfigManager API)
+        diag_cfg = self.config.get_diagnostics_config()
         self._diag_pub = self.create_publisher(String, diag_cfg.topic, 10)
         self._diag_timer = self.create_timer(
             diag_cfg.publish_interval_s, self._publish_diagnostics
@@ -123,12 +119,20 @@ class ProxyNode(Node):
         self._initialize_entities()
         self._log_route_summary()
 
+        # Subscribe to classifier decisions
+        self._classifier_sub = self.create_subscription(
+            String,
+            "/adaptive_bridge/classifier/state",
+            self._on_classifier_update,
+            10,
+        )
+
     # ── Startup helpers ───────────────────────────────────────────────
 
     def _initialize_entities(self) -> None:
         """Pre-create all publishers and subscribers at startup (never in callbacks)."""
         sub_qos = QoSProfile(depth=10)
-        max_q = self.config._cfg().safety.max_noncritical_queue
+        max_q = self.config.get_safety_config().max_noncritical_queue
 
         for topic_id, route in self._routes.items():
             crit_qos = self.qos_manager.resolve(topic_id, "critical")
@@ -189,19 +193,36 @@ class ProxyNode(Node):
                 if raw > 0:
                     msg_ts_ns = raw
 
-            allowed, reason = self.policy_engine.allow_publish(
+            allowed, reason = self._nc_policy.allow_publish(
                 topic_id, msg_ts_ns, now_ns
             )
             if allowed:
                 try:
                     self._noncritical_queues[topic_id].put_nowait(msg)
                 except queue.Full:
-                    self.policy_engine.record_drop(topic_id, "queue_overflow")
+                    self._nc_policy.record_drop(topic_id, "queue_overflow")
             else:
-                self.policy_engine.record_drop(topic_id, reason)
+                self._nc_policy.record_drop(topic_id, reason)
 
         except Exception as exc:
             self.get_logger().error(f"Publish error for topic_id='{topic_id}': {exc}")
+
+    # ── Classifier update callback ────────────────────────────────────
+
+    def _on_classifier_update(self, msg: String) -> None:
+        """Process classifier decision -> update policy engine modes."""
+        try:
+            decision = json.loads(msg.data)
+            sub_id = decision.get("subscriber_id", "")
+            state = decision.get("state", "UNKNOWN")
+            self._policy_engine.on_classifier_update(sub_id, state)
+
+            for topic_id in self._routes:
+                mode = self._policy_engine.get_mode(topic_id)
+                self._nc_policy.on_mode_change(topic_id, mode)
+
+        except Exception as e:
+            self.get_logger().warning(f"Classifier update failed: {e}")
 
     # ── Noncritical background worker ─────────────────────────────────
 
@@ -231,8 +252,8 @@ class ProxyNode(Node):
             for topic_id in self._routes:
                 c = self._counters_by_topic[topic_id]
 
-                # Sync drop counters from policy engine
-                stats = self.policy_engine.get_stats(topic_id)
+                # Sync drop counters from noncritical policy
+                stats = self._nc_policy.get_stats(topic_id)
                 c.dropped_noncritical_rate_limit = stats.rate_limit
                 c.dropped_noncritical_queue = stats.queue_overflow
                 c.dropped_noncritical_stale = stats.stale
@@ -245,11 +266,20 @@ class ProxyNode(Node):
                     "disabled": stats.disabled,
                 })
 
-                nc_mode = self.policy_engine._mode.get(topic_id, None)
+                nc_mode = self._nc_policy._mode.get(topic_id, None)
                 if nc_mode is not None:
                     self._diag_collector.ingest_noncritical_mode(
                         topic_id, nc_mode.value
                     )
+
+            # Ingest classifier snapshots into diagnostics
+            combined_snapshots = {}
+            for sub_id, curr_state in self._policy_engine.get_subscriber_states().items():
+                combined_snapshots[sub_id] = {
+                    "classification": curr_state,
+                }
+            if combined_snapshots:
+                self._diag_collector.ingest_classifier_snapshot(combined_snapshots)
 
             self._diag_collector.set_global_mode(self._global_mode)
 
@@ -281,6 +311,11 @@ class ProxyNode(Node):
             self.destroy_publisher(pub)
         for pub in self._publishers_noncritical.values():
             self.destroy_publisher(pub)
+
+        try:
+            self.destroy_subscription(self._classifier_sub)
+        except Exception:
+            pass
 
         self._subscribers.clear()
         self._publishers_critical.clear()

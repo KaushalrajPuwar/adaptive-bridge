@@ -156,7 +156,7 @@ def test_proxy_callback_updates_only_target_topic() -> None:
     node._publishers_critical = {"a": _FakePub(), "b": _FakePub()}
     node._publishers_noncritical = {"a": _FakePub(), "b": _FakePub()}
     node._noncritical_queues = {"a": _queue.Queue(maxsize=50), "b": _queue.Queue(maxsize=50)}
-    node.policy_engine = _FakePolicy()
+    node._nc_policy = _FakePolicy()
     node.get_logger = lambda: _Logger()
 
     cb = node._make_topic_callback("a")

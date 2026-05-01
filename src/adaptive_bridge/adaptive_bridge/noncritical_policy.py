@@ -3,7 +3,7 @@ import time
 from typing import Tuple, Optional, Dict
 from dataclasses import dataclass
 
-from .config_manager import BridgeConfig
+from .config_types import BridgeConfig
 from .qos_manager import QoSManager
 from .models import PolicyMode
 
@@ -35,7 +35,7 @@ class NoncriticalPolicyEngine:
         self._mode: Dict[str, PolicyMode] = {}
         self._stats: Dict[str, DropStats] = {}
 
-    def _init_topic(self, topic_id: str, now_ns: int):
+    def _init_topic(self, topic_id: str, now_ns: int) -> None:
         if topic_id not in self._tokens:
             self._tokens[topic_id] = float(self.max_queue) # Start full for burst
             self._last_refill_ns[topic_id] = now_ns
