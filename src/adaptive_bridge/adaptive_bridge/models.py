@@ -8,6 +8,7 @@ from typing import Any
 class PolicyMode(str, Enum):
     NORMAL = "NORMAL"
     DEGRADED = "DEGRADED"
+    EMERGENCY = "EMERGENCY"
     DISABLED = "DISABLED"
     FAILURE = "FAILURE"
 

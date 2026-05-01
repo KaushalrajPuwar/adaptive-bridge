@@ -32,11 +32,13 @@ from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
 
 from .config_manager import ConfigManager
-from .models import TopicCounters, TopicRoute
+from .models import TopicCounters, TopicRoute, PolicyMode
 from .topic_registry import TopicRegistry
 from .qos_manager import QoSManager
 from .noncritical_policy import NoncriticalPolicyEngine
 from .policy_engine import PolicyEngine
+from .safety_supervisor import SafetySupervisor
+from .utils.security import SecurityManager, SecurityMode
 from .diagnostics import DiagnosticsCollector
 
 
@@ -94,8 +96,19 @@ class ProxyNode(Node):
             forced_critical_ids=self.config.get_forced_critical_ids(),
         )
 
-        # Global mode (extended by SafetySupervisor in Step 12)
-        self._global_mode: str = "NORMAL"
+        # Safety supervisor (global mode machine)
+        self._supervisor = SafetySupervisor(
+            max_noncritical_queue=self.config.get_safety_config().max_noncritical_queue,
+        )
+
+        # Security manager (HMAC signing verification)
+        sec_cfg = self.config.get_security_config()
+        self._security = SecurityManager(
+            mode=self._map_trust_mode(sec_cfg.trust_mode),
+            hmac_secret=sec_cfg.hmac_secret,
+            replay_window_ms=sec_cfg.replay_window_ms,
+        )
+        self._security.set_log_callback(self.get_logger().warning)
 
         # DiagnosticsCollector (pure Python, no Node)
         self._diag_collector = DiagnosticsCollector()
@@ -209,10 +222,29 @@ class ProxyNode(Node):
 
     # ── Classifier update callback ────────────────────────────────────
 
+    @staticmethod
+    def _map_trust_mode(trust_mode: str) -> str:
+        return {
+            "default_deny": "enforce", "permissive": "log_only", "off": "off"
+        }.get(trust_mode, "off")
+
     def _on_classifier_update(self, msg: String) -> None:
-        """Process classifier decision -> update policy engine modes."""
+        """Process classifier decision -> verify HMAC -> update policy engine."""
         try:
             decision = json.loads(msg.data)
+
+            if "_hmac" in decision:
+                valid, reason = self._security.verify(decision)
+                if not valid:
+                    self.get_logger().warning(
+                        f"Classifier HMAC {reason}"
+                    )
+                    if self._security.mode == SecurityMode.ENFORCE:
+                        return
+
+            if hasattr(self, '_supervisor') and self._security.get_stats().get("replay_count", 0) > 3:
+                self._supervisor.record_fault(1)
+
             sub_id = decision.get("subscriber_id", "")
             state = decision.get("state", "UNKNOWN")
             self._policy_engine.on_classifier_update(sub_id, state)
@@ -281,7 +313,36 @@ class ProxyNode(Node):
             if combined_snapshots:
                 self._diag_collector.ingest_classifier_snapshot(combined_snapshots)
 
-            self._diag_collector.set_global_mode(self._global_mode)
+            # Ingest security stats into diagnostics
+            sec_stats = self._security.get_stats()
+            if sec_stats.get("invalid_sig_count", 0) > 0 or sec_stats.get("replay_count", 0) > 0:
+                self._diag_collector.ingest_classifier_snapshot({
+                    "security": sec_stats,
+                })
+
+            # Evaluate safety supervisor each diagnostics tick
+            queue_sizes = [q.qsize() for q in self._noncritical_queues.values()]
+            overflow_count = sum(
+                self._nc_policy.get_stats(tid).queue_overflow
+                for tid in self._routes
+            )
+            mode_str, reason = self._supervisor.evaluate(
+                queue_sizes, overflow_count, 0
+            )
+            self._diag_collector.set_global_mode(mode_str)
+
+            # Apply safety mode overrides on noncritical policy
+            supervisor_mode = self._supervisor.get_mode()
+            if supervisor_mode.value in ("DEGRADED", "EMERGENCY"):
+                for tid in self._routes:
+                    self._nc_policy.on_mode_change(tid, PolicyMode.DISABLED)
+            elif supervisor_mode == PolicyMode.NORMAL:
+                for tid in self._routes:
+                    self._nc_policy.on_mode_change(tid, PolicyMode.NORMAL)
+
+            if self._supervisor.is_shutdown_requested():
+                self.get_logger().error("SAFETY: FAILURE mode — initiating shutdown")
+                self._running = False
 
             payload = self._diag_collector.gather_payload()
             msg = String()
@@ -296,6 +357,10 @@ class ProxyNode(Node):
 
     def _shutdown_entities(self) -> None:
         self._running = False
+
+        if hasattr(self, '_supervisor') and self._supervisor.get_mode() == PolicyMode.FAILURE:
+            self.get_logger().error("ProxyNode shutdown: FAILURE mode active")
+
         try:
             self._diag_timer.cancel()
         except Exception:

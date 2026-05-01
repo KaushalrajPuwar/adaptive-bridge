@@ -23,6 +23,7 @@ from .classifier_core import SubscriberClassifier
 from .classifier_types import ALL_STATES
 from .config_manager import ConfigManager
 from .utils.probes import ProbeClient, stats_to_probe_metrics
+from .utils.security import SecurityManager
 
 
 class ClassifierNode(Node):
@@ -64,6 +65,14 @@ class ClassifierNode(Node):
         self._error_count: int = 0
         self._last_eval_ts_ns: int = 0
 
+        sec_cfg = self._config_manager.get_security_config()
+        self._security = SecurityManager(
+            mode=self._map_trust_mode(sec_cfg.trust_mode),
+            hmac_secret=sec_cfg.hmac_secret,
+            replay_window_ms=sec_cfg.replay_window_ms,
+        )
+        self._security.set_log_callback(self.get_logger().warning)
+
         self.get_logger().info(
             f"ClassifierNode active — "
             f"eval={clf_cfg.evaluate_rate_hz}Hz, "
@@ -94,6 +103,8 @@ class ClassifierNode(Node):
             payload_dict["error_count"] = self._error_count
             payload_dict["confidence"] = None
 
+            self._security.sign(payload_dict)
+
             msg = String()
             msg.data = json.dumps(payload_dict)
             self._state_pub.publish(msg)
@@ -103,6 +114,12 @@ class ClassifierNode(Node):
             self.get_logger().error(
                 f"Classifier evaluation error (eval #{self._eval_count}): {e}"
             )
+
+    @staticmethod
+    def _map_trust_mode(trust_mode: str) -> str:
+        return {
+            "default_deny": "enforce", "permissive": "log_only", "off": "off"
+        }.get(trust_mode, "off")
 
     def get_classifier(self) -> SubscriberClassifier:
         """Expose the core classifier for diagnostics and integration."""

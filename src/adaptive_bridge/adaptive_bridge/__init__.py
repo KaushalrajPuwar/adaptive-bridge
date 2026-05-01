@@ -29,6 +29,7 @@ from .classifier_types import (
     REASON_PROMOTING,
 )
 from .classifier_core import SubscriberClassifier
+from .utils.security import SecurityManager, SecurityMode
 
 __all__ = [
     "BridgeConfig",
@@ -65,4 +66,7 @@ __all__ = [
     "CLASSIFIER_SCHEMA_VERSION",
     "ALL_REASON_CODES",
     "ALL_STATES",
+    # Step 13 — Security Controls
+    "SecurityManager",
+    "SecurityMode",
 ]

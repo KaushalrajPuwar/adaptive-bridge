@@ -140,22 +140,48 @@ dual critical/noncritical output streams, and supporting utilities.
 - 12 unit tests covering policy engine damping, safety bias, forced-critical
   override, and diagnostics snapshot.
 
+2026-05-01 — Safety Supervisor and Failure-Mode Runtime
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Created SafetySupervisor: pure-Python global mode machine with
+  NORMAL -> DEGRADED -> EMERGENCY -> FAILURE transitions, gated by
+  hysteresis windows (3 consecutive violations to degrade, 5 clean
+  windows to recover).
+- Integrated into ProxyNode: safety evaluated each diagnostics tick via
+  queue pressure and overflow metrics. DEGRADED/EMERGENCY modes override
+  all noncritical topics to DISABLED; FAILURE mode triggers shutdown.
+- Added EMERGENCY mode to PolicyMode enum in models.py.
+- 16 unit tests covering initialization, degrade triggers, escalation,
+  recovery cooldowns, terminal FAILURE, edge cases, and enum compliance.
+
+2026-05-01 — Security Controls for Control Plane Signals
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Implemented HMAC signing and verification for classifier decision payloads
+  using SHA-256 with configurable shared secret.
+- ReplayProtector: per-identity bounded nonce tracking with 30-second
+  timestamp window (max 200 entries per identity, oldest evicted).
+- SecurityManager: combined sign, verify, replay, and diagnostics counters,
+  supporting three modes: off, log_only, enforce.
+- Integrated into classifier_node (sign decisions before publish) and
+  proxy_node (verify decisions on receive, reject in enforce mode).
+- Security stats (invalid_sig_count, replay_count) injected into diagnostics.
+- Updated SecurityConfig with hmac_secret, replay_window_ms fields and
+  "off" trust_mode option.
+- 21 unit tests covering HMAC sign/verify, replay protection, mode
+  enforcement, diagnostics counters, and round-trip.
+
 Known Gaps (Deferred)
 ~~~~~~~~~~~~~~~~~~~~~
 
-- proxy_node.py's 5 remaining self.config._cfg() private attribute
-  accesses have been resolved in Step 11 via new public ConfigManager
-  getters.
-- noncritical_policy.py imports BridgeConfig from config_manager instead
-  of config_types.
-- Missing return type annotations in noncritical_policy.py and
-  proxy_node.py.
 - 6 files missing module-level docstrings (config_manager.py,
   config_types.py, qos_manager.py, topic_registry.py, models.py,
   noncritical_policy.py).
 - PEP257/Flake8 lint tests permanently skipped (deferred to final
   packaging pass).
-- utils/security.py is an empty stub awaiting implementation
+- utils/security.py is functional for Step 13 requirements; diagnostics
+  anonymization (hashed node identities) and SROS2 integration deferred
+  to future extensions (see docs/07_SECURITY_MODEL.md §20).
   (docs/07_SECURITY_MODEL.md).
 
 Architecture Decisions

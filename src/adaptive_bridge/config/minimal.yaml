@@ -62,6 +62,8 @@ security:
   allow_legacy_node_name_overrides: true
   enable_probe_hmac: false
   max_probe_rate_hz: 10.0
+  hmac_secret: ""
+  replay_window_ms: 30000
 
 diagnostics:
   enabled: true

@@ -219,13 +219,15 @@ class SecurityConfig:
     allow_legacy_node_name_overrides: bool
     enable_probe_hmac: bool
     max_probe_rate_hz: float
+    hmac_secret: str
+    replay_window_ms: int
 
     @classmethod
     def from_dict(cls, data: Any, path: str = "security") -> "SecurityConfig":
         d = _as_dict(data, path)
         trust_mode = _as_str(d.get("trust_mode"), _path(path, "trust_mode")).lower()
-        if trust_mode not in {"default_deny", "permissive"}:
-            raise ValueError(f"{_path(path, 'trust_mode')} must be default_deny or permissive")
+        if trust_mode not in {"default_deny", "permissive", "off"}:
+            raise ValueError(f"{_path(path, 'trust_mode')} must be default_deny, permissive, or off")
         return cls(
             trust_mode=trust_mode,
             allow_legacy_node_name_overrides=_as_bool(
@@ -233,6 +235,11 @@ class SecurityConfig:
             ),
             enable_probe_hmac=_as_bool(d.get("enable_probe_hmac"), _path(path, "enable_probe_hmac")),
             max_probe_rate_hz=_as_float(d.get("max_probe_rate_hz"), _path(path, "max_probe_rate_hz"), min_value=0.1),
+            hmac_secret=_as_str(
+                d.get("hmac_secret", "none") if d.get("hmac_secret") else "none",
+                _path(path, "hmac_secret"),
+            ),
+            replay_window_ms=_as_int(d.get("replay_window_ms", 30000), _path(path, "replay_window_ms"), min_value=1),
         )
 
 
