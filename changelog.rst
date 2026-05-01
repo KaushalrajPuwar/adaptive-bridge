@@ -1,144 +1,135 @@
 Adaptive Bridge Project Changelog
-================================
+==================================
 
-This changelog records the evolution of the Adaptive Bridge project based on the authoritative `docs/11_DECISIONS_LOG.md`.
+This changelog records the evolution of the Adaptive Bridge project.
 
-v0.1.0 (Prototype Development - 2026-04-28)
+v0.1.0 (Prototype Development — 2026-04-28)
 ------------------------------------------
 
-Implemented Prototype Capabilities
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Initial prototype with basic ROS 2 proxy node for LaserScan forwarding,
+dual critical/noncritical output streams, and supporting utilities.
 
-Prototype implementation present:
+- Proxy node with single-topic LaserScan forwarding.
+- YAML configuration loading with QoS profile mapping.
+- Named QoS profile resolution system.
+- Standalone diagnostics node.
+- Probe client/responder utilities for RTT measurement.
+- Repository hygiene, packaging, and build determinism baseline.
 
-- Proxy node with LaserScan forwarding
-- Basic QoS and config managers
-- Diagnostics and probe utilities
+2026-04-29 — Configuration, Data Models, and Multi-Topic Proxy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In-Progress Roadmap Work
-~~~~~~~~~~~~~~~~~~~~~~~~
+- Typed configuration contract with schema validation (BridgeConfig,
+  ClassifierConfig, ProbeConfig, QoSPolicy, SafetyConfig, SecurityConfig,
+  RoutingPolicyConfig, TopicConfig). All sections validated for bounds
+  and required fields with backward-compatible legacy key support.
+- Shared runtime data models: TopicRoute, TopicCounters, PolicyMode,
+  ClassifierSnapshot, TopicRuntimeState with dict serialization.
+- Deterministic TopicRegistry with sanitizer, route builder, uniqueness
+  enforcement, and export helpers.
+- Multi-topic proxy runtime: builds all configured topic routes at startup,
+  pre-creates per-topic subscribers and critical/noncritical publishers.
+  Callback-factory forwarding with per-topic counters and safe shutdown.
+- QoS Manager v2: decoupled from ConfigManager, parses generic YAML
+  dictionaries, extracts RMW-incompatible lifespan_ms to application
+  logic, resolves profiles with three-tier fallback (per-topic → role
+  default → global fallback).
+- QoS policy catalog documented in docs/15_QOS_MATRIX.md.
+- Test coverage for config validation, proxy multi-topic behavior, QoS
+  resolution, and topic registry invariants.
 
-Following roadmap in ``docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md``
+2026-04-29 — Noncritical Degradation and Diagnostics
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Steps 0-20 execution in progress
-- Current focus: Configuration contract and schema validation (Step 2)
+- NoncriticalPolicyEngine: token-bucket rate limiter, staleness-based TTL
+  drops, mode-disabled drops. Integrated into ProxyNode with isolated
+  threading — critical publish path never blocked by noncritical policy.
+- Diagnostics schema v1.0 with validate_payload() and assert_valid().
+  Pure-Python DiagnosticsCollector (no ROS dependency) + ROS publisher
+  wrapper owned by ProxyNode. Payload includes schema version, wall-clock
+  timestamp, sequence number, mode, per-topic counters, drop reasons,
+  QoS profiles, and classifier snapshot placeholder.
+- Unit tests for rate limiting, staleness, mode changes, drop statistics,
+  and diagnostics payload structure.
 
-Step 1 Completion (Repository Hygiene and Build Determinism)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Repository hygiene updates completed for packaging/test baseline.
-- Deterministic build/test command sequence validated from clean workspace.
-- Empty smoke-test blind spots removed (`src/tests/*` populated).
-- Config asset packaging path validated with `src/adaptive_bridge/config/default.yaml`.
-
-Step 2 Completion (Configuration Contract and Schema Validation)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Introduced typed configuration contract via `adaptive_bridge/config_types.py`.
-- Reworked `ConfigManager` to load/normalize/validate strict schema and expose typed getters.
-- Added backward compatibility mode for legacy keys with `DeprecationWarning`.
-- Added `minimal.yaml` and `stress.yaml` sample configs and upgraded `default.yaml` to full Step 2 schema.
-- Added validation-focused tests for missing sections, bad thresholds/rates, unknown QoS profiles, duplicate topic IDs, and legacy compatibility path.
-
-Step 3 Completion (Internal Data Models and Topic Registry)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Added shared runtime model layer (`models.py`) for routes, counters, policy mode, classifier snapshot, and per-topic runtime state.
-- Added deterministic `TopicRegistry` with topic sanitizer, route build helpers, route export helpers, and strict uniqueness enforcement.
-- Updated proxy to consume `TopicRegistry` route objects and model-backed counters (single-route behavior preserved pending Step 4).
-- Updated diagnostics/classifier placeholder to align with Step 3 shared model contracts.
-- Expanded proxy-basic tests for registry/topic determinism, uniqueness failures, and model serialization behavior.
-
-Step 4 Completion (Proxy Core v2: Multi-Topic, Precreated Endpoints)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Upgraded proxy runtime to build all configured topic routes and pre-create per-topic subscribers plus critical/noncritical publishers at startup.
-- Added callback-factory forwarding path keyed by `topic_id`, with per-topic counters and periodic per-topic forwarding logs.
-- Added explicit safe shutdown cleanup for all pre-created subscribers and publishers.
-- Updated launch file to support explicit `config_path` launch argument for multi-topic configuration runs.
-- Expanded proxy tests to validate multi-topic route build ordering, callback topic isolation, and shutdown entity cleanup behavior.
-
-Step 5 Completion (QoS Manager v2 and Policy Catalog)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Upgraded QoSManager to decouple from ConfigManager and parse generic dictionary mappings.
-- Extracted RMW-incompatible lifespan_ms handling to proxy application logic exposed via describe().
-- Updated proxy_node.py to correctly initialize and use QoSManager.resolve().
-- Added python3-yaml as exec_depend to package.xml.
-- Fixed Python packaging to correctly bundle utils/*.yaml during colcon build.
-- Created QoS matrix documentation in docs/15_QOS_MATRIX.md.
-
-Step 6 Completion (Noncritical Degradation Engine)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Created NoncriticalPolicyEngine with token-bucket rate limiter, staleness-based TTL drops, and mode-disabled drops.
-- Integrated into ProxyNode with isolated threading and asynchronous queueing for the noncritical pathway.
-- Critical publish thread guaranteed not blocked by noncritical policy code.
-- Added unit tests for rate limiting, staleness, mode changes, and drop statistics.
-
-Step 7 Completion (Diagnostics Contract and Observability Backbone)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Created diagnostics_schema.py with v1.0 schema definition and validate_payload() validator.
-- Refactored diagnostics.py into pure DjangoCollector (no ROS dependency) + DiagnosticsPublisher wrapper.
-- ProxyNode owns ROS publisher + timer for diagnostics at publish_interval_s.
-- Payload includes: schema_version, ts_wall, seq, mode, topics, classifier, qos sections.
-- 15 new unit tests + updated proxy tests. Diagnostics payload schema-versioned and machine-parseable.
-
-Step 8 Completion (Probe Protocol Hardening)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-05-01 — Probe Protocol Hardening
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Probe payloads versioned (v=1) with monotonic nanosecond timestamps.
-- Outstanding sequence map bounded at window_size * 3 to prevent unbounded memory growth.
-- Sliding-window loss rate (not lifetime-cumulative), RTT, and jitter metrics.
-- Configurable probe timeout (timeout_ms) with stale response rejection.
-- Receive-side sanity checks: malformed JSON, unknown seq, wrong protocol version, stale RTT, zero/negative seq.
-- ProbeResponder now injects recv_time_ns, reply_time_ns, response_send_time_ns, and responder_id.
-- Config: timeout_ms added to ProbeConfig and all three YAML configs (default/minimal/stress).
-- 30 new unit tests in src/tests/test_probes.py covering payload format, sanity checks, bounded storage, rolling metrics, get_stats() contract, and round-trip end-to-end.
+- Bounded outstanding-sequence map (window_size × 3 cap) to prevent
+  unbounded memory growth under sustained loss.
+- Sliding-window loss rate, RTT mean/p95, and jitter estimate.
+- Configurable probe timeout with stale response rejection.
+- Receive-side sanity checks: malformed JSON, unknown sequence, wrong
+  protocol version, stale RTT, zero/negative seq.
+- ProbeResponder now injects recv_time_ns, reply_time_ns,
+  response_send_time_ns, and responder_id.
+- Configurable timeout_ms added to ProbeConfig and all config files.
+- 30 unit tests covering payload format, sanity checks, bounded storage,
+  rolling metrics, get_stats() contract, and end-to-end round trip.
 
-Architecture & Core Design
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-05-01 — Classifier Core Library
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-*   **D001: Multi-Workspace Strategy**: Design decision accepted and active in project workflow.
-*   **D002: Proxy-Based isolation**: Design decision accepted; prototype implementation present via proxy node.
-*   **D003: Dual Output Streams**: Design decision accepted; prototype implementation present for `/scan`.
-*   **D004: Static Publisher Lifecycle**: Design decision accepted; startup publisher creation behavior present in prototype.
-*   **D005: Policy-Based Classification**: Design decision accepted; full classifier-policy runtime implementation pending.
-*   **D020: Stateless Forwarding**: Design decision accepted; compatible with current proxy prototype.
-*   **D022: Multi-Proxy Scaling**: Design decision accepted; implementation pending.
+- Pure-Python SubscriberClassifier state machine with UNKNOWN,
+  CRITICAL, and NONCRITICAL states, gated by hysteresis counters.
+- Typed I/O contracts: ProbeMetrics (input) and ClassificationDecision
+  (output), both with validation and dict serialization.
+- Eight reason codes: manual_override, high_rtt, high_loss,
+  high_rtt_and_loss, recovered, insufficient_data, stable_critical,
+  promoting.
+- Forced-critical override bypasses state machine without mutating
+  internal counters; override removal resumes from preserved state.
+- ClassificationDecision.to_snapshot() bridges to diagnostics payload
+  system.
+- Transition table documented in docs/05_CLASSIFIER_AND_PROBES.md
+  (section §17.1) with definitions for is_bad, is_good, and fuzzy zone.
+- 30 unit tests covering state machine invariants, hysteresis counters,
+  reason codes, flap suppression, override behavior, snapshots, reset,
+  and fuzzy-zone handling.
 
-Classifier & Network Monitoring
+2026-05-01 — Code Review Fixes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-*   **D006: Active Network Probing**: Design decision accepted; probe utilities present in prototype.
-*   **D008: Stability Mechanism**: Design decision accepted; full classifier hysteresis pipeline pending.
-*   **D009: Deterministic Overrides**: Design decision accepted; partial config support present, full classifier integration pending.
+- Fixed UNKNOWN state promotion: now correctly requires is_good metrics
+  (not just not is_bad), matching documented transition table.
+- Added public API to ConfigManager (get_forced_critical_ids());
+  refactored classifier_node.py to use it.
+- Added missing classifier constants to package exports: REASON_PROMOTING,
+  CLASSIFIER_SCHEMA_VERSION, ALL_REASON_CODES, ALL_STATES.
+- Fixed license to Apache-2.0 and maintainer email to gmail.com in both
+  package.xml and setup.py (were inconsistent).
+- Added missing std_msgs dependency to package.xml.
+- Updated proxy_node.py docstring to reflect cumulative feature scope
+  across all development phases.
 
-Safety & Mitigation Policies
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Known Gaps (Deferred)
+~~~~~~~~~~~~~~~~~~~~~
 
-*   **D010: Internal Load Shedding**: Design decision accepted; production-grade noncritical load-shedding implementation pending.
-*   **D011: Critical Path Fidelity**: Design decision accepted; enforced as roadmap constraint.
-*   **D012: Non-Critical Degradation**: Design decision accepted; partial QoS behavior present, full adaptive degradation pending.
+- proxy_node.py has 5 remaining self.config._cfg() private attribute
+  accesses — see docs/11_DECISIONS_LOG.md D029.
+- noncritical_policy.py imports BridgeConfig from config_manager instead
+  of config_types.
+- Missing return type annotations in noncritical_policy.py and
+  proxy_node.py.
+- 6 files missing module-level docstrings (config_manager.py,
+  config_types.py, qos_manager.py, topic_registry.py, models.py,
+  noncritical_policy.py).
+- PEP257/Flake8 lint tests permanently skipped (deferred to final
+  packaging pass).
+- utils/security.py is an empty stub awaiting implementation
+  (docs/07_SECURITY_MODEL.md).
 
-Environment & Dependencies
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Architecture Decisions
+~~~~~~~~~~~~~~~~~~~~~~
 
-*   **D013: Transport Forcing**: Design decision accepted for baseline/eval workflow.
-*   **D024: Sensor-Ready Implementation**: Prototype implementation present (`sensor_msgs/LaserScan` forwarding path).
-*   **D025: Add sensor_msgs Dependency**: Prototype implementation present in package dependency configuration.
-
-Evaluation & Metrics
-~~~~~~~~~~~~~~~~~~~~
-
-*   **D016: Tuned Baseline Comparison**: Design decision accepted; full evaluation implementation pending.
-*   **D017: Distribution-Based Metrics**: Design decision accepted; full metrics pipeline implementation pending.
-*   **D018: Multi-RMW Validation**: Design decision accepted; qualification phase pending.
-
-Change Control
-~~~~~~~~~~~~~~
-
-Architecture decisions are recorded in ``docs/11_DECISIONS_LOG.md``.
-Architecture updates require the explicit decision-log process in ``docs/11_DECISIONS_LOG.md``.
-Execution sequence follows ``docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md``.
+Multi-workspace strategy (D001), proxy-based isolation (D002),
+dual output streams (D003), static publisher lifecycle (D004),
+policy-based classification (D005), active network probing (D006),
+stability mechanism (D008), deterministic overrides (D009),
+internal load shedding (D010), critical path fidelity (D011),
+non-critical degradation (D012), transport forcing (D013),
+tuned baseline comparison (D016), distribution-based metrics (D017),
+multi-RMW validation (D018), multi-proxy scaling (D022),
+sensor-ready implementation (D024), add sensor_msgs dependency (D025),
+stateless forwarding (D020).

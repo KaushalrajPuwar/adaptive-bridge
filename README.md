@@ -6,17 +6,7 @@ A ROS 2 package for dynamically bridging critical and non-critical subscribers i
 
 `adaptive-bridge` mitigates the slow subscriber problem, where slow subscribers (e.g., remote nodes over wireless networks or resource-constrained local nodes) cause publisher choking or message loss. It dynamically classifies subscribers as critical (e.g., low-latency navigation nodes) or non-critical (e.g., high-latency visualization nodes) based on callback latency, reassigns non-critical subscribers to separate topics, and applies adaptive QoS settings (e.g., `RELIABLE` for critical, `BEST_EFFORT` with downsampling for non-critical). The package supports navigation and image streaming scenarios and is compatible with Cyclone DDS and Fast DDS.
 
-This package has a working prototype that runs today, with production hardening in progress (see `docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md`).
-
-## Planned Features
-
-- **Dynamic Subscriber Classification**: Runtime classification using callback latency (e.g., <100 ms = critical, >100 ms = non-critical).
-- **Adaptive QoS**: Scenario-specific QoS (e.g., `RELIABLE` for navigation, downsampled `BEST_EFFORT` for images).
-- **Topic Decoupling**: Routes messages to critical (original) and non-critical (`/external/*`) topics via a proxy node.
-- **User Configuration**: YAML-based setup for critical topics and QoS overrides.
-- **DDS Compatibility**: Supports Cyclone DDS and Fast DDS.
-
-## Installation (Development Available Now)
+## Installation
 
 ```bash
 cd /path/to/adaptive_bridge_ws
@@ -25,56 +15,41 @@ colcon build --packages-select adaptive_bridge
 source install/setup.bash
 ```
 
-**Note:** Production release packaging is pending completion of roadmap Steps 1-20.
-
 ## Usage
 
-### Available now (prototype baseline)
+Run the proxy node to forward a topic through dual critical/noncritical output paths:
 
-- Build package in development workspace.
-- Run `proxy_node` and forward `/scan` (`sensor_msgs/LaserScan`) to:
-  - `/adaptive_bridge/critical/scan`
-  - `/adaptive_bridge/noncritical/scan`
-- Validate forwarding using `ros2 topic echo`.
+```bash
+ros2 run adaptive_bridge proxy_node --ros-args \
+  -p config_path:=/path/to/config/default.yaml
+```
 
-### Planned in roadmap (production hardening)
+This subscribes to input topics defined in the config file (e.g., `/scan`) and republishes each message to:
+- `/adaptive_bridge/critical/<topic>` (forwarded with source QoS setting)
+- `/adaptive_bridge/noncritical/<topic>` (forwarded through rate-limiting and degradation policy)
 
-- Classifier node with hysteresis and probe-driven decisions.
-- Security controls for control-plane messages.
-- Full evaluation harness and repeatable experiment automation in eval workspace.
-- Production-grade multi-topic policy engine and test pyramid.
+Validate forwarding using `ros2 topic echo`.
 
-## Development Status (Step 1 Snapshot — 2026-04-28)
+## Components
 
-- **Stage**: Prototype implementation exists and runs; production system is in progress.
-- **Roadmap Position**: Step 1 completed; Step 2 next (`docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md`).
-- **Testing Direction**: Evaluation will include controlled impairment experiments and multi-RMW validation (FastDDS/CycloneDDS).
-- **Metrics**: Latency, message loss, throughput, CPU/network usage.
+| Component | Description |
+|-----------|-------------|
+| `proxy_node` | Core bridge: subscribes to input topics, publishes dual critical/noncritical streams with per-topic QoS, rate limiting, and diagnostics |
+| `classifier_node` | ROS wrapper around the classifier state machine (probe subscription and decision publishing wiring in progress) |
+| `diagnostics_node` | Standalone diagnostics publisher for observability |
 
-## Governance
+## Key Modules
 
-- Architecture changes must follow `docs/11_DECISIONS_LOG.md` change-control rules before implementation.
-- Execution order and delivery gates are defined in `docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md`.
+- **config_types.py** — Typed configuration model (BridgeConfig, ClassifierConfig, ProbeConfig, etc.) with schema validation.
+- **config_manager.py** — YAML loading with typed getters and legacy compatibility mode.
+- **qos_manager.py** — Named QoS profile resolution with three-tier fallback.
+- **topic_registry.py** — Deterministic topic route builder with uniqueness enforcement.
+- **noncritical_policy.py** — Token-bucket rate limiter, staleness drops, mode-disabled drops.
+- **diagnostics.py + diagnostics_schema.py** — Schema-versioned diagnostics payload with pure-Python collector and ROS publisher.
+- **utils/probes.py** — Hardened probe client/responder (protocol v1, bounded storage, windowed metrics, jitter, timeout).
+- **classifier_core.py + classifier_types.py** — Pure-Python classifier state machine (UNKNOWN/CRITICAL/NONCRITICAL, hysteresis, forced overrides).
 
-## Current Implementation Status (as of 2026-04-28)
-
-**Implemented:**
-- `proxy_node.py`: Single-topic LaserScan forwarding with dual critical/noncritical outputs
-- `config_manager.py`: YAML configuration loading with QoS profile mapping
-- `qos_manager.py`: Named QoS profile resolution
-- `diagnostics.py`: Standalone diagnostics node
-- `utils/probes.py`: Probe client/responder utilities for RTT measurement
-
-**In Progress (Steps 1-20):**
-- Multi-topic proxy support
-- Classifier node with hysteresis
-- Security controls
-- Production test suite
-- Evaluation harness
-
-See `docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md` for detailed step breakdown.
-
-## Development Validation Commands
+## Development Validation
 
 ```bash
 cd /path/to/adaptive_bridge_ws
@@ -84,6 +59,9 @@ source install/setup.bash
 colcon test --packages-select adaptive_bridge
 colcon test-result --verbose
 ```
+
+The test suite includes unit tests for configuration validation, proxy routing, QoS resolution, noncritical policy, diagnostics payload structure, probe protocol, and classifier state machine logic (103+ tests, 0 failures expected).
+
 ## License
 
 Licensed under the Apache License 2.0. Check LICENSE file for the full license.

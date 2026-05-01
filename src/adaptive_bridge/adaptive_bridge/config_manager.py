@@ -204,3 +204,12 @@ class ConfigManager:
         if not isinstance(entry, dict):
             return False
         return bool(entry.get("critical", False))
+
+    def get_forced_critical_ids(self) -> set[str]:
+        """Return subscriber IDs that are forced CRITICAL via overrides."""
+        overrides = self._cfg().overrides
+        return {
+            node_name
+            for node_name, entry in overrides.items()
+            if isinstance(entry, dict) and entry.get("critical", False)
+        }

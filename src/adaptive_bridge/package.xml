@@ -2,10 +2,11 @@
     <name>adaptive_bridge</name>
     <version>0.1.0</version>
     <description>Adaptive Bridge: dynamic topic decoupling and QoS adaptation</description>
-    <maintainer email="kaushalrajpuwar@protonmail.com">Kaushalraj Puwar</maintainer>
+    <maintainer email="kaushalrajpuwar@gmail.com">Kaushalraj Puwar</maintainer>
     <license>Apache-2.0</license>
 
     <depend>rclpy</depend>
+    <depend>std_msgs</depend>
     <depend>sensor_msgs</depend>
 
     <buildtool_depend>ament_python</buildtool_depend>

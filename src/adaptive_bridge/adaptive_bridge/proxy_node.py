@@ -1,6 +1,6 @@
 # src/adaptive_bridge/adaptive_bridge/proxy_node.py
 """
-Adaptive Bridge ProxyNode — Step 7 upgrade.
+Adaptive Bridge ProxyNode — Steps 4–8 cumulative upgrades.
 
 Changes from Step 6:
   - Embeds DiagnosticsCollector (pure Python) + owns ROS diag publisher/timer.
@@ -8,6 +8,17 @@ Changes from Step 6:
   - Snapshots per-topic counters, drop stats, QoS profiles, global mode on tick.
   - Global mode = "NORMAL" until SafetySupervisor (Step 12).
   - Classifier snapshot = {} until ClassifierNode (Step 10).
+
+History:
+  Step 4: Multi-topic proxy with precreated endpoints.
+  Step 5: QoS Manager integration (profile resolution).
+  Step 6: NoncriticalPolicyEngine with token-bucket rate limiting.
+  Step 7: DiagnosticsCollector + ROS diagnostics publisher/timer.
+  Step 8: Probe protocol v1 (client/responder in utils/probes.py; no proxy changes).
+
+TODO (Step 11, task 6): Replace all self.config._cfg() calls with public
+ConfigManager getters.  See docs/14_PRODUCTION_DEVELOPMENT_ROADMAP.md
+Step 11 — Technical Tasks point 6 for detail.
 """
 
 import json
