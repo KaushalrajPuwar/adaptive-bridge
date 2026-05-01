@@ -40,6 +40,7 @@ probes:
   jitter_threshold_ms: 30.0
   window_size: 20
   hysteresis_count: 3
+  timeout_ms: 600
   request_topic: "/adaptive_bridge/probe_req"
   response_topic: "/adaptive_bridge/probe_resp"
 

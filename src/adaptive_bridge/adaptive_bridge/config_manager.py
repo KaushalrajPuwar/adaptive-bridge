@@ -135,6 +135,7 @@ class ConfigManager:
                 "jitter_threshold_ms": 25.0,
                 "window_size": 50,
                 "hysteresis_count": int(probe.get("hysteresis_count", 3)),
+                "timeout_ms": int(probe.get("timeout_ms", 500)),
                 "request_topic": "/adaptive_bridge/probe_req",
                 "response_topic": "/adaptive_bridge/probe_resp",
             },

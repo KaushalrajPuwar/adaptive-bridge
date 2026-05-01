@@ -149,6 +149,7 @@ class ProbeConfig:
     jitter_threshold_ms: float
     window_size: int
     hysteresis_count: int
+    timeout_ms: int
     request_topic: str
     response_topic: str
 
@@ -163,6 +164,7 @@ class ProbeConfig:
             jitter_threshold_ms=_as_float(d.get("jitter_threshold_ms"), _path(path, "jitter_threshold_ms"), min_value=0.0),
             window_size=_as_int(d.get("window_size"), _path(path, "window_size"), min_value=1),
             hysteresis_count=_as_int(d.get("hysteresis_count"), _path(path, "hysteresis_count"), min_value=1),
+            timeout_ms=_as_int(d.get("timeout_ms", 500), _path(path, "timeout_ms"), min_value=1),
             request_topic=_as_str(d.get("request_topic"), _path(path, "request_topic")),
             response_topic=_as_str(d.get("response_topic"), _path(path, "response_topic")),
         )

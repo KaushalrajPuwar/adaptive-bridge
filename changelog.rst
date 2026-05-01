@@ -58,6 +58,45 @@ Step 4 Completion (Proxy Core v2: Multi-Topic, Precreated Endpoints)
 - Updated launch file to support explicit `config_path` launch argument for multi-topic configuration runs.
 - Expanded proxy tests to validate multi-topic route build ordering, callback topic isolation, and shutdown entity cleanup behavior.
 
+Step 5 Completion (QoS Manager v2 and Policy Catalog)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Upgraded QoSManager to decouple from ConfigManager and parse generic dictionary mappings.
+- Extracted RMW-incompatible lifespan_ms handling to proxy application logic exposed via describe().
+- Updated proxy_node.py to correctly initialize and use QoSManager.resolve().
+- Added python3-yaml as exec_depend to package.xml.
+- Fixed Python packaging to correctly bundle utils/*.yaml during colcon build.
+- Created QoS matrix documentation in docs/15_QOS_MATRIX.md.
+
+Step 6 Completion (Noncritical Degradation Engine)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Created NoncriticalPolicyEngine with token-bucket rate limiter, staleness-based TTL drops, and mode-disabled drops.
+- Integrated into ProxyNode with isolated threading and asynchronous queueing for the noncritical pathway.
+- Critical publish thread guaranteed not blocked by noncritical policy code.
+- Added unit tests for rate limiting, staleness, mode changes, and drop statistics.
+
+Step 7 Completion (Diagnostics Contract and Observability Backbone)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Created diagnostics_schema.py with v1.0 schema definition and validate_payload() validator.
+- Refactored diagnostics.py into pure DjangoCollector (no ROS dependency) + DiagnosticsPublisher wrapper.
+- ProxyNode owns ROS publisher + timer for diagnostics at publish_interval_s.
+- Payload includes: schema_version, ts_wall, seq, mode, topics, classifier, qos sections.
+- 15 new unit tests + updated proxy tests. Diagnostics payload schema-versioned and machine-parseable.
+
+Step 8 Completion (Probe Protocol Hardening)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Probe payloads versioned (v=1) with monotonic nanosecond timestamps.
+- Outstanding sequence map bounded at window_size * 3 to prevent unbounded memory growth.
+- Sliding-window loss rate (not lifetime-cumulative), RTT, and jitter metrics.
+- Configurable probe timeout (timeout_ms) with stale response rejection.
+- Receive-side sanity checks: malformed JSON, unknown seq, wrong protocol version, stale RTT, zero/negative seq.
+- ProbeResponder now injects recv_time_ns, reply_time_ns, response_send_time_ns, and responder_id.
+- Config: timeout_ms added to ProbeConfig and all three YAML configs (default/minimal/stress).
+- 30 new unit tests in src/tests/test_probes.py covering payload format, sanity checks, bounded storage, rolling metrics, get_stats() contract, and round-trip end-to-end.
+
 Architecture & Core Design
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
