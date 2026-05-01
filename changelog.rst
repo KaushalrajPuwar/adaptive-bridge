@@ -171,6 +171,37 @@ dual critical/noncritical output streams, and supporting utilities.
 - 21 unit tests covering HMAC sign/verify, replay protection, mode
   enforcement, diagnostics counters, and round-trip.
 
+2026-05-01 — Launch, Runtime UX, and Config Ergonomics
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- adaptive_bridge.launch.py: default config_path now auto-resolves to
+  installed default.yaml via get_package_share_directory.
+- test_bridge.launch.py: rewritten from empty stub to quickstart launch
+  (proxy + classifier on default config).
+- adaptive_bridge_full.launch.py: created for full-stack operation
+  (proxy + classifier + diagnostics on stress.yaml).
+- Added probe_responder console_scripts entry point in setup.py.
+- README.md: added Quickstart section, launch profile table, resolved
+  absolute paths throughout, updated test count (171+), added safety
+  and security modules to module list, cleaned placeholder paths.
+- Updated classifier_node description from "wiring in progress" to
+  current production state.
+
+2026-05-01 — Test Pyramid Completion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Created test_stress_scenarios.py: 8 tests covering sustained rate
+  limiting, token bucket refill, queue overflow, stale drop counters,
+  and full safety supervisor recovery cycles.
+- Created test_proxy_classifier_integration.py: 4 tests covering
+  classifier -> policy -> noncritical mode end-to-end propagation
+  and safety override.
+- Created src/tests/fixtures/ with shared test helpers (make_test_config,
+  sample_probe_stats).
+- Updated lint wrapper skip reasons (flake8, pep257) from stale
+  "Step 1" reference to current Step 15+ context.
+- Total test count: 171 -> 183 (12 new tests).
+
 Known Gaps (Deferred)
 ~~~~~~~~~~~~~~~~~~~~~
 

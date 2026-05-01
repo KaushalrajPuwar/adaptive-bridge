@@ -18,7 +18,7 @@ import pytest
 
 @pytest.mark.flake8
 @pytest.mark.linter
-@pytest.mark.skip(reason='Step 1 focuses on deterministic baseline; full style cleanup is deferred to later hardening.')
+@pytest.mark.skip(reason='Full style hardening and PEP8/Docstring compliance deferred to testing/hardening cycle (Step 15+).')
 def test_flake8():
     rc, errors = main_with_errors(argv=[])
     assert rc == 0, \

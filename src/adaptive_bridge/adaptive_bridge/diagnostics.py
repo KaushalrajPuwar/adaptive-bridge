@@ -267,21 +267,40 @@ class DiagnosticsPublisher:
 class _DiagnosticsNode:
     """Minimal ROS Node shell that hosts a DiagnosticsPublisher.
 
-    Used only by main() below for standalone invocation.
+    Reads DiagnosticsConfig from the config file to determine publish
+    interval, topic name, and verbosity.  Used only by main() below.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, config_path: str = "") -> None:
         import rclpy
         from rclpy.node import Node
+        from .config_manager import ConfigManager
 
         class _Inner(Node):
             def __init__(inner_self) -> None:  # noqa: N805
                 super().__init__("adaptive_bridge_diagnostics")
+                inner_self.declare_parameter("config_path", config_path or "")
+                cp = inner_self.get_parameter("config_path").get_parameter_value().string_value
+                cfg_mgr = ConfigManager(cp)
+                diag_cfg = cfg_mgr.get_diagnostics_config()
+
                 inner_self.pub = DiagnosticsPublisher(
                     create_publisher_fn=inner_self.create_publisher,
                     create_timer_fn=inner_self.create_timer,
                     get_logger_fn=inner_self.get_logger,
-                    publish_interval=1.0,
+                    publish_interval=diag_cfg.publish_interval_s,
+                    diag_topic=diag_cfg.topic,
+                )
+
+                verbosity = str(diag_cfg.verbosity).upper()
+                if verbosity in ("ERROR", "WARNING", "INFO", "DEBUG"):
+                    rclpy.logging.set_logger_level(
+                        inner_self.get_name(), getattr(rclpy.logging.LoggingSeverity, verbosity)
+                    )
+                inner_self.get_logger().info(
+                    f"DiagnosticsNode active topic='{diag_cfg.topic}' "
+                    f"interval={diag_cfg.publish_interval_s}s "
+                    f"verbosity={diag_cfg.verbosity}"
                 )
 
         self._node = _Inner()

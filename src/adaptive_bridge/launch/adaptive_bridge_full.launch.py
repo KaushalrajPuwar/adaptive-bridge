@@ -1,5 +1,5 @@
-# src/adaptive_bridge/launch/test_bridge.launch.py
-"""Quickstart launch: proxy + classifier for immediate local verification."""
+# src/adaptive_bridge/launch/adaptive_bridge_full.launch.py
+"""Full-stack launch: proxy + classifier + diagnostics for production."""
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -10,7 +10,7 @@ import os
 
 def generate_launch_description():
     pkg_share = get_package_share_directory("adaptive_bridge")
-    default_config = os.path.join(pkg_share, "config", "default.yaml")
+    default_config = os.path.join(pkg_share, "config", "stress.yaml")
     config_arg = DeclareLaunchArgument(
         "config_path", default_value=default_config,
         description="Absolute path to Adaptive Bridge YAML config.",
@@ -25,6 +25,11 @@ def generate_launch_description():
         Node(
             package="adaptive_bridge", executable="classifier_node",
             name="adaptive_bridge_classifier", output="screen",
+            parameters=[{"config_path": LaunchConfiguration("config_path")}],
+        ),
+        Node(
+            package="adaptive_bridge", executable="diagnostics_node",
+            name="adaptive_bridge_diagnostics", output="screen",
             parameters=[{"config_path": LaunchConfiguration("config_path")}],
         ),
     ])

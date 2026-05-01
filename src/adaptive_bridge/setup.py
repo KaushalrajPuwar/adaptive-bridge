@@ -29,7 +29,8 @@ setup(
         'console_scripts': [
             'proxy_node = adaptive_bridge.proxy_node:main',
             'classifier_node = adaptive_bridge.classifier_node:main',
-            'diagnostics_node = adaptive_bridge.diagnostics:main'
+            'diagnostics_node = adaptive_bridge.diagnostics:main',
+            'probe_responder = adaptive_bridge.utils.probes:_probe_responder_main',
         ],
     },
 )
