@@ -65,9 +65,9 @@ def test_registry_list_routes_is_deterministic() -> None:
 
 def test_registry_build_routes_for_three_topics() -> None:
     topics = [
-        TopicConfig("t1", "/scan", "/adaptive_bridge/critical/scan", "/adaptive_bridge/noncritical/scan"),
-        TopicConfig("t2", "/imu", "/adaptive_bridge/critical/imu", "/adaptive_bridge/noncritical/imu"),
-        TopicConfig("t3", "/odom", "/adaptive_bridge/critical/odom", "/adaptive_bridge/noncritical/odom"),
+        TopicConfig(id="t1", input_topic="/scan", critical_output="/adaptive_bridge/critical/scan", noncritical_output="/adaptive_bridge/noncritical/scan"),
+        TopicConfig(id="t2", input_topic="/imu", critical_output="/adaptive_bridge/critical/imu", noncritical_output="/adaptive_bridge/noncritical/imu"),
+        TopicConfig(id="t3", input_topic="/odom", critical_output="/adaptive_bridge/critical/odom", noncritical_output="/adaptive_bridge/noncritical/odom"),
     ]
     registry = TopicRegistry()
     routes = registry.build_routes(topics)

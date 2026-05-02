@@ -19,6 +19,7 @@ class TopicRoute:
     input_topic: str
     critical_output: str
     noncritical_output: str
+    message_type: str = "sensor_msgs/LaserScan"
 
     def to_dict(self) -> dict[str, str]:
         return {
@@ -26,6 +27,7 @@ class TopicRoute:
             "input_topic": self.input_topic,
             "critical_output": self.critical_output,
             "noncritical_output": self.noncritical_output,
+            "message_type": self.message_type,
         }
 
 

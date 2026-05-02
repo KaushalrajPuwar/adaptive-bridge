@@ -48,7 +48,8 @@ def make_test_config(overrides: Optional[dict] = None) -> dict:
         "topics": [
             {"id": "test_scan", "input_topic": "/scan",
              "critical_output": "/adaptive_bridge/critical/scan",
-             "noncritical_output": "/adaptive_bridge/noncritical/scan"},
+             "noncritical_output": "/adaptive_bridge/noncritical/scan",
+             "message_type": "sensor_msgs/LaserScan"},
         ],
         "qos_profiles": {
             "reliable_depth10": {

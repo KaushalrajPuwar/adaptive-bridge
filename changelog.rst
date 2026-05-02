@@ -228,3 +228,32 @@ tuned baseline comparison (D016), distribution-based metrics (D017),
 multi-RMW validation (D018), multi-proxy scaling (D022),
 sensor-ready implementation (D024), add sensor_msgs dependency (D025),
 stateless forwarding (D020).
+
+2026-05-02 — Evaluation Workspace (WS2) and Classifier Threshold Tuning
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Created ``eval/`` (WS2, inside adaptive_bridge_ws) — evaluation harness for
+  reproducible baseline-vs-adaptive experiments under controlled network
+  impairment.
+- Switched from constant-delay/independent-loss tc model to Gilbert-Elliot
+  bursty loss channel model (``tc netem loss gemodel``).  GE produces
+  short high-loss bursts separated by clean periods, matching real IEEE
+  802.11 channel contention behaviour and triggering DDS backpressure at
+  realistic average loss rates (2.3%–9.2%).
+- Delay uses normal distribution (mean ± stddev) for realistic RTT variation.
+- Three impairment levels: mild (2.3% avg), moderate (5.4% avg), strong
+  (9.2% avg).  Scenario gradient enables spectrum analysis.
+- 10 experiment scenarios defined in ``scenarios.yaml`` covering baseline,
+  adaptive bridge, toggle impairment, and ablation.
+- Evaluation nodes package (``eval_nodes``) created as a standalone ROS2
+  package depending on ``adaptive_bridge`` — downstream-user perspective.
+- Orchestration: one-command runner (``run_experiment.py``), tc manager
+  with ``ifb`` ingress shaping for adaptive mode, post-run summary/plot
+  generation (``generate_summary.py``, ``plot_results.py``).
+- Results output follows strict ``10_RESULTS_FORMAT.md`` layout.
+- Classifier thresholds re-tuned in WS1 shipped configs:
+  ``demote_loss_threshold`` from 10% → 4%, ``demote_rtt_ms`` from 120ms → 80ms,
+  ``evaluate_rate_hz`` from 1Hz → 2Hz.  Applied to all three YAML configs
+  (``default``, ``minimal``, ``stress``).
+- WS2 evaluation config uses experiment-tuned thresholds (demote_loss 1.5%)
+  appropriate for controlled Docker impairment with near-zero baseline loss.

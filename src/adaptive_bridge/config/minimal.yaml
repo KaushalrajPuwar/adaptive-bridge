@@ -1,8 +1,13 @@
+# ── Example configuration: Adaptive Bridge minimal profile ──────────
+# Lightweight config: lower probe rate, smaller windows, fewer resources.
+# To use your own topics, edit the topics[] list below.
+
 topics:
   - id: "scan_main"
     input_topic: "/scan"
     critical_output: "/adaptive_bridge/critical/scan"
     noncritical_output: "/adaptive_bridge/noncritical/scan"
+    message_type: "sensor_msgs/LaserScan"
     qos_overrides: {}
 
 qos_profiles:
@@ -24,11 +29,11 @@ topic_qos_profiles:
 
 classifier:
   enabled: true
-  evaluate_rate_hz: 1.0
-  demote_loss_threshold: 0.10
-  promote_loss_threshold: 0.03
-  demote_rtt_ms: 120.0
-  promote_rtt_ms: 60.0
+  evaluate_rate_hz: 2.0
+  demote_loss_threshold: 0.04
+  promote_loss_threshold: 0.02
+  demote_rtt_ms: 80.0
+  promote_rtt_ms: 40.0
   hysteresis_count: 3
   allow_unknown_state: true
 

@@ -51,6 +51,7 @@ class TopicRegistry:
                 input_topic=topic.input_topic,
                 critical_output=critical_output,
                 noncritical_output=noncritical_output,
+                message_type=topic.message_type,
             )
 
         self._routes = routes

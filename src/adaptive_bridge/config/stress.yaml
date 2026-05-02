@@ -1,8 +1,13 @@
+# ── Example configuration: Adaptive Bridge stress profile ───────────
+# High-throughput config: faster evaluation, larger windows, tighter safety.
+# To use your own topics, edit the topics[] list below.
+
 topics:
   - id: "scan_main"
     input_topic: "/scan"
     critical_output: "/adaptive_bridge/critical/scan"
     noncritical_output: "/adaptive_bridge/noncritical/scan"
+    message_type: "sensor_msgs/LaserScan"
     qos_overrides: {}
 
 qos_profiles:
@@ -31,9 +36,9 @@ topic_qos_profiles:
 classifier:
   enabled: true
   evaluate_rate_hz: 5.0
-  demote_loss_threshold: 0.06
+  demote_loss_threshold: 0.04
   promote_loss_threshold: 0.02
-  demote_rtt_ms: 90.0
+  demote_rtt_ms: 80.0
   promote_rtt_ms: 40.0
   hysteresis_count: 5
   allow_unknown_state: false

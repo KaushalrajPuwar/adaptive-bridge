@@ -552,7 +552,6 @@ def test_to_snapshot_produces_classifier_snapshot() -> None:
 def test_classifier_node_imports() -> None:
     """Regression: classifier_node module must still import cleanly."""
     import importlib
-    import pytest
     pytest.importorskip("rclpy")
     mod = importlib.import_module("adaptive_bridge.classifier_node")
     assert mod is not None
@@ -561,7 +560,6 @@ def test_classifier_node_imports() -> None:
 def test_classifier_node_has_main_callable() -> None:
     """Regression: classifier_node.main must remain a callable."""
     import importlib
-    import pytest
     pytest.importorskip("rclpy")
     mod = importlib.import_module("adaptive_bridge.classifier_node")
     assert callable(mod.main)

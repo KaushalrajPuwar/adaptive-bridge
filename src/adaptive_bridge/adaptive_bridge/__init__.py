@@ -51,7 +51,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "validate_payload",
     "assert_valid",
-    # Step 9 — Classifier Core
+    # Classifier exports
     "ProbeMetrics",
     "ClassificationDecision",
     "SubscriberClassifier",
@@ -66,7 +66,7 @@ __all__ = [
     "CLASSIFIER_SCHEMA_VERSION",
     "ALL_REASON_CODES",
     "ALL_STATES",
-    # Step 13 — Security Controls
+    # Security exports
     "SecurityManager",
     "SecurityMode",
 ]

@@ -1,0 +1,183 @@
+# scenarios.yaml — Step 16 Evaluation Scenario Matrix
+#
+# Single source of truth for all experiment definitions.
+# Each scenario drives Docker Compose selection, tc impairment,
+# duration, and expected behaviour.
+#
+# Gilbert-Elliot bursty loss model parameters (per tc-netem):
+#   p  = good->bad transition probability (%)
+#   r  = bad->good transition probability (%)
+#   1-h = loss probability in good state (%)
+#   1-k = loss probability in bad state (%)
+#   avg_loss = (r * G + p * B) / (p + r)
+#
+# See docs/08_EXPERIMENT_PLAN.md and docs/09_REPRODUCTION_BASELINE.md
+
+scenarios:
+  # ── Baseline (no bridge) ────────────────────────────────────────────
+  - name: "baseline_clean"
+    mode: baseline
+    compose_file: "docker/docker-compose.baseline.yml"
+    duration_s: 120
+    impairment:
+      enabled: false
+    toggle: false
+    classifier_enabled: false
+    description: "Baseline without bridge or impairment — clean throughput reference"
+
+  - name: "baseline_mild"
+    mode: baseline
+    compose_file: "docker/docker-compose.baseline.yml"
+    duration_s: 180
+    impairment:
+      enabled: true
+      bandwidth_kbit: 5000
+      delay_mean_ms: 20
+      delay_stddev_ms: 8
+      loss_model: "gemodel"
+      loss_p: 1
+      loss_r: 15
+      loss_good_pct: 0.5
+      loss_bad_pct: 30
+    toggle: false
+    classifier_enabled: false
+    description: "Baseline with mild GE bursty loss (~2.3% avg) — realistic congested WiFi"
+
+  - name: "baseline_moderate"
+    mode: baseline
+    compose_file: "docker/docker-compose.baseline.yml"
+    duration_s: 180
+    impairment:
+      enabled: true
+      bandwidth_kbit: 5000
+      delay_mean_ms: 40
+      delay_stddev_ms: 15
+      loss_model: "gemodel"
+      loss_p: 3
+      loss_r: 15
+      loss_good_pct: 0.5
+      loss_bad_pct: 30
+    toggle: false
+    classifier_enabled: false
+    description: "Baseline with moderate GE bursty loss (~5.4% avg) — heavily congested WiFi"
+
+  - name: "baseline_strong"
+    mode: baseline
+    compose_file: "docker/docker-compose.baseline.yml"
+    duration_s: 180
+    impairment:
+      enabled: true
+      bandwidth_kbit: 5000
+      delay_mean_ms: 60
+      delay_stddev_ms: 20
+      loss_model: "gemodel"
+      loss_p: 2
+      loss_r: 10
+      loss_good_pct: 1.0
+      loss_bad_pct: 50
+    toggle: false
+    classifier_enabled: false
+    description: "Baseline with strong GE bursty loss (~9.2% avg) — edge-of-coverage WiFi"
+
+  # ── Adaptive Bridge (full stack) ─────────────────────────────────────
+  - name: "bridge_clean"
+    mode: adaptive
+    compose_file: "docker/docker-compose.adaptive.yml"
+    duration_s: 120
+    impairment:
+      enabled: false
+    toggle: false
+    classifier_enabled: true
+    description: "Bridge with full stack, no impairment — overhead measurement"
+
+  - name: "bridge_mild"
+    mode: adaptive
+    compose_file: "docker/docker-compose.adaptive.yml"
+    duration_s: 180
+    impairment:
+      enabled: true
+      bandwidth_kbit: 5000
+      delay_mean_ms: 20
+      delay_stddev_ms: 8
+      loss_model: "gemodel"
+      loss_p: 1
+      loss_r: 15
+      loss_good_pct: 0.5
+      loss_bad_pct: 30
+    toggle: false
+    classifier_enabled: true
+    description: "Adaptive bridge with mild GE bursty loss — primary isolation evidence"
+
+  - name: "bridge_moderate"
+    mode: adaptive
+    compose_file: "docker/docker-compose.adaptive.yml"
+    duration_s: 180
+    impairment:
+      enabled: true
+      bandwidth_kbit: 5000
+      delay_mean_ms: 40
+      delay_stddev_ms: 15
+      loss_model: "gemodel"
+      loss_p: 3
+      loss_r: 15
+      loss_good_pct: 0.5
+      loss_bad_pct: 30
+    toggle: false
+    classifier_enabled: true
+    description: "Adaptive bridge with moderate GE bursty loss — core isolation proof"
+
+  - name: "bridge_strong"
+    mode: adaptive
+    compose_file: "docker/docker-compose.adaptive.yml"
+    duration_s: 180
+    impairment:
+      enabled: true
+      bandwidth_kbit: 5000
+      delay_mean_ms: 60
+      delay_stddev_ms: 20
+      loss_model: "gemodel"
+      loss_p: 2
+      loss_r: 10
+      loss_good_pct: 1.0
+      loss_bad_pct: 50
+    toggle: false
+    classifier_enabled: true
+    description: "Adaptive bridge with strong GE bursty loss — robustness boundary"
+
+  - name: "bridge_toggle"
+    mode: adaptive
+    compose_file: "docker/docker-compose.adaptive.yml"
+    duration_s: 240
+    impairment:
+      enabled: true
+      bandwidth_kbit: 5000
+      delay_mean_ms: 40
+      delay_stddev_ms: 15
+      loss_model: "gemodel"
+      loss_p: 3
+      loss_r: 15
+      loss_good_pct: 0.5
+      loss_bad_pct: 30
+    toggle: true
+    toggle_interval_s: 60
+    classifier_enabled: true
+    description: "Toggle moderate impairment every 60s — hysteresis/stability test"
+
+  # ── Ablation ─────────────────────────────────────────────────────────
+  - name: "ablation_no_classifier"
+    mode: adaptive
+    compose_file: "docker/docker-compose.adaptive.yml"
+    duration_s: 180
+    impairment:
+      enabled: true
+      bandwidth_kbit: 5000
+      delay_mean_ms: 40
+      delay_stddev_ms: 15
+      loss_model: "gemodel"
+      loss_p: 3
+      loss_r: 15
+      loss_good_pct: 0.5
+      loss_bad_pct: 30
+    toggle: false
+    classifier_enabled: false
+    description: "Bridge with moderate GE bursty loss, classifier disabled — isolate topic-split vs classifier benefit"

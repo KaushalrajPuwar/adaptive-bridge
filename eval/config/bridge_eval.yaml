@@ -1,14 +1,8 @@
-# ── Example configuration: Adaptive Bridge default profile ──────────
-# To use your own topics, copy this file and edit the topics[] list.
-# Run with: ros2 launch adaptive_bridge adaptive_bridge.launch.py config_path:=./my_config.yaml
+# bridge_eval.yaml — Adaptive Bridge configuration for WS2 evaluation experiments
 #
-# Each topic entry needs:
-#   id                – unique identifier (any string)
-#   input_topic       – topic the bridge subscribes to
-#   critical_output   – topic the bridge publishes for critical subscribers
-#   noncritical_output – topic the bridge publishes for noncritical subscribers
-#   message_type      – ROS 2 message type ("sensor_msgs/LaserScan", etc.)
-#   qos_overrides     – optional per-topic QoS profile overrides
+# Evaluation-tuned thresholds for the Gilbert-Elliot bursty loss model.
+# These thresholds are tuned to the controlled Docker impairment environment
+# (baseline loss ~0%) and are NOT production defaults.
 
 topics:
   - id: "scan_main"
@@ -24,12 +18,6 @@ qos_profiles:
     history: KEEP_LAST
     depth: 10
     durability: VOLATILE
-  besteffort_depth5_lifespan500ms:
-    reliability: BEST_EFFORT
-    history: KEEP_LAST
-    depth: 5
-    durability: VOLATILE
-    lifespan_ms: 500
   besteffort_depth5:
     reliability: BEST_EFFORT
     history: KEEP_LAST
@@ -39,15 +27,15 @@ qos_profiles:
 topic_qos_profiles:
   scan_main:
     critical: "reliable_depth10"
-    noncritical: "besteffort_depth5_lifespan500ms"
+    noncritical: "besteffort_depth5"
 
 classifier:
   enabled: true
   evaluate_rate_hz: 2.0
-  demote_loss_threshold: 0.04
-  promote_loss_threshold: 0.02
-  demote_rtt_ms: 80.0
-  promote_rtt_ms: 40.0
+  demote_loss_threshold: 0.015
+  promote_loss_threshold: 0.005
+  demote_rtt_ms: 50.0
+  promote_rtt_ms: 20.0
   hysteresis_count: 3
   allow_unknown_state: true
 
@@ -77,8 +65,8 @@ safety:
   overload_drop_noncritical_first: true
 
 security:
-  trust_mode: "default_deny"
-  allow_legacy_node_name_overrides: true
+  trust_mode: "off"
+  allow_legacy_node_name_overrides: false
   enable_probe_hmac: false
   max_probe_rate_hz: 20.0
   hmac_secret: ""
@@ -89,5 +77,3 @@ diagnostics:
   publish_interval_s: 1.0
   topic: "/adaptive_bridge/diagnostics"
   verbosity: "info"
-
-overrides: {}

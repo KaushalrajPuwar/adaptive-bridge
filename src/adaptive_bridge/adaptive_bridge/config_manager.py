@@ -240,7 +240,3 @@ class ConfigManager:
         """Return the diagnostics subsection."""
         return self._cfg().diagnostics
 
-    def get_safety_config(self) -> SafetyConfig:
-        """Return the safety subsection."""
-        return self._cfg().safety
-

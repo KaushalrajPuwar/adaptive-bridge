@@ -40,17 +40,20 @@ class PolicyEngine:
         self._subscriber_states: dict[str, str] = {}
         self._damping_counters: dict[str, int] = {}
         self._last_classification: dict[str, str] = {}
+        self._last_decision_data: dict[str, dict] = {}
 
-    def on_classifier_update(self, subscriber_id: str, state: str) -> None:
+    def on_classifier_update(self, subscriber_id: str, state: str,
+                              decision_data: dict | None = None) -> None:
         """Process a single classifier decision for one subscriber.
 
         Applies forced-critical override first, then transition damping.
-        A subscriber must report the same state for N consecutive windows
-        before the policy engine accepts it as stable.
+        Optionally stores the full decision dict for diagnostics injection.
         """
         if subscriber_id in self._forced_critical:
             self._subscriber_states[subscriber_id] = "CRITICAL"
             self._damping_counters[subscriber_id] = self._hysteresis_count
+            if decision_data:
+                self._last_decision_data[subscriber_id] = decision_data
             return
 
         prev = self._last_classification.get(subscriber_id)
@@ -69,10 +72,12 @@ class PolicyEngine:
             self._subscriber_states[subscriber_id] = state
 
     def get_mode(self, topic_id: str) -> PolicyMode:
-        """Return the appropriate PolicyMode for a topic.
+        """Return the global PolicyMode across all tracked subscribers.
 
-        Safety bias: UNKNOWN subscribers are treated as CRITICAL (NORMAL mode).
-        If ANY subscriber for this topic is NONCRITICAL, the topic is DEGRADED.
+        The ``topic_id`` parameter is reserved for future per-topic isolation
+        but is currently unused — the engine checks ALL known subscriber states.
+        If ANY subscriber is NONCRITICAL, the entire system is DEGRADED.
+        This is the safest default until per-topic subscriber mapping is added.
         """
         for sub_id, curr_state in self._subscriber_states.items():
             if curr_state == "NONCRITICAL":
@@ -89,3 +94,9 @@ class PolicyEngine:
     def get_subscriber_states(self) -> dict[str, str]:
         """Return the current stable classifier state for all subscribers."""
         return dict(self._subscriber_states)
+
+    def get_subscriber_decisions(self) -> dict[str, dict]:
+        """Return the last full decision data dict for each subscriber.
+
+        Used by diagnostics to inject classifier details into payload."""
+        return dict(self._last_decision_data)

@@ -18,9 +18,8 @@ class QoSManager:
         if qos_profiles is not None:
             self._load_from_dict(qos_profiles)
         else:
-            # Load default if nothing is provided
-            default_path = os.path.join(os.path.dirname(__file__), 'utils', 'qos_profiles.yaml')
-            self.load_profiles(default_path)
+            # Deferred loading — caller must call load_profiles() later
+            pass
 
     def _load_from_dict(self, profiles_dict: Dict[str, Any]) -> None:
         for name, profile in profiles_dict.items():

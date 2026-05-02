@@ -63,6 +63,7 @@ class TopicConfig:
     input_topic: str
     critical_output: str
     noncritical_output: str
+    message_type: str = "sensor_msgs/LaserScan"
     qos_overrides: dict[str, str] = field(default_factory=dict)
 
     @classmethod
@@ -81,6 +82,8 @@ class TopicConfig:
             input_topic=_as_str(d.get("input_topic"), _path(path, "input_topic")),
             critical_output=_as_str(d.get("critical_output"), _path(path, "critical_output")),
             noncritical_output=_as_str(d.get("noncritical_output"), _path(path, "noncritical_output")),
+            message_type=_as_str(d.get("message_type", "sensor_msgs/LaserScan"),
+                                _path(path, "message_type")),
             qos_overrides=clean_overrides,
         )
 
@@ -236,7 +239,7 @@ class SecurityConfig:
             enable_probe_hmac=_as_bool(d.get("enable_probe_hmac"), _path(path, "enable_probe_hmac")),
             max_probe_rate_hz=_as_float(d.get("max_probe_rate_hz"), _path(path, "max_probe_rate_hz"), min_value=0.1),
             hmac_secret=_as_str(
-                d.get("hmac_secret", "none") if d.get("hmac_secret") else "none",
+                d.get("hmac_secret") or "none",
                 _path(path, "hmac_secret"),
             ),
             replay_window_ms=_as_int(d.get("replay_window_ms", 30000), _path(path, "replay_window_ms"), min_value=1),

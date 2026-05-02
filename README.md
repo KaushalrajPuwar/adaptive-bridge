@@ -47,6 +47,36 @@ ros2 launch adaptive_bridge adaptive_bridge.launch.py config_path:=/home/kaushal
 
 The default config path for each profile is automatically resolved from the installed package share directory.
 
+### Custom Configuration
+
+The bridge bridges whatever topics you define. Copy one of the example configs
+(`config/default.yaml`, `config/minimal.yaml`, `config/stress.yaml`) and edit
+the `topics` list with your topics:
+
+```yaml
+topics:
+  - id: "camera"
+    input_topic: "/camera/image"
+    critical_output: "/adaptive_bridge/critical/camera"
+    noncritical_output: "/adaptive_bridge/noncritical/camera"
+    message_type: "sensor_msgs/Image"
+  - id: "lidar"
+    input_topic: "/scan"
+    critical_output: "/adaptive_bridge/critical/scan"
+    noncritical_output: "/adaptive_bridge/noncritical/scan"
+    message_type: "sensor_msgs/LaserScan"
+```
+
+Any ROS 2 message type works (e.g. `sensor_msgs/Imu`, `geometry_msgs/Twist`,
+or custom types). The message package must be installed on your system.
+
+**Config profiles:**
+| File | Purpose |
+|------|---------|
+| `default.yaml` | Example: full-featured config (1 topic, classifier on, probes 5Hz) |
+| `minimal.yaml` | Example: lightweight config (lower resources) |
+| `stress.yaml` | Example: high-throughput config (faster eval, tighter safety) |
+
 ### Run Individual Nodes
 
 ```bash
@@ -96,6 +126,13 @@ The test suite includes unit, integration, and ROS2 live-graph tests for all com
 ## License
 
 Licensed under the Apache License 2.0. Check LICENSE file for the full license.
+
+## Evaluation Workspace
+
+A separate evaluation harness lives at `eval/` (inside this repository).
+It provides automated baseline-vs-adaptive experiments under a Gilbert-Elliot bursty
+loss channel model (Docker + tc/netem), one-command scenario runner, and structured
+results output (CSV, YAML, PNG plots). See its `README.md` for details.
 
 ## Contributing
 

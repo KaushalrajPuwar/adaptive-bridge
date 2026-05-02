@@ -9,6 +9,7 @@ Wires classifier decisions into runtime noncritical degradation:
   - Transition damping prevents oscillation (hysteresis_count windows)
   - Safety bias: UNKNOWN -> treat as CRITICAL -> NORMAL mode
   - Refactored all config access to public ConfigManager API
+  - Generic message-type support: any ROS 2 message type configurable via YAML
 
 History:
   Step 4: Multi-topic proxy with precreated endpoints.
@@ -17,18 +18,19 @@ History:
   Step 7: DiagnosticsCollector + ROS diagnostics publisher/timer.
   Step 8: Probe protocol v1 (client/responder in utils/probes.py; no proxy changes).
   Step 11: Policy coupling: classifier sub + PolicyEngine + mode-driven degradation.
+  Step 16: Generic message-type support: resolved dynamically from config.
 """
 
+import importlib
 import json
 import time
 import queue
 import threading
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
-from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
 
 from .config_manager import ConfigManager
@@ -42,9 +44,38 @@ from .utils.security import SecurityManager, SecurityMode
 from .diagnostics import DiagnosticsCollector
 
 
+def _resolve_msg_type(msg_type_str: str):
+    """Convert 'sensor_msgs/LaserScan' -> Python message class.
+
+    Raises ImportError or ValueError with a clear message if the type
+    cannot be resolved.
+    """
+    try:
+        pkg_name, msg_name = msg_type_str.split("/", 1)
+    except ValueError:
+        raise ValueError(
+            f"Invalid message_type '{msg_type_str}'. Must be 'pkg_name/MsgName'."
+        )
+    try:
+        mod = importlib.import_module(f"{pkg_name}.msg")
+    except ImportError:
+        raise ImportError(
+            f"Package '{pkg_name}' not found. "
+            f"Is ros-{pkg_name.replace('_', '-')} installed?"
+        )
+    msg_class = getattr(mod, msg_name, None)
+    if msg_class is None:
+        raise ValueError(
+            f"Message type '{msg_name}' not found in {pkg_name}.msg."
+        )
+    return msg_class
+
+
 class ProxyNode(Node):
     """
-    Adaptive bridge proxy for multi-topic LaserScan forwarding.
+    Adaptive bridge proxy for multi-topic message forwarding.
+
+    Supports any ROS 2 message type configured via YAML ``message_type`` field.
 
     Behavior:
       - Subscribes to configured input topics.
@@ -151,11 +182,14 @@ class ProxyNode(Node):
             crit_qos = self.qos_manager.resolve(topic_id, "critical")
             noncrit_qos = self.qos_manager.resolve(topic_id, "noncritical")
 
+            # Dynamic message-type resolution
+            msg_class = _resolve_msg_type(route.message_type)
+
             self._publishers_critical[topic_id] = self.create_publisher(
-                LaserScan, route.critical_output, crit_qos
+                msg_class, route.critical_output, crit_qos
             )
             self._publishers_noncritical[topic_id] = self.create_publisher(
-                LaserScan, route.noncritical_output, noncrit_qos
+                msg_class, route.noncritical_output, noncrit_qos
             )
 
             self._noncritical_queues[topic_id] = queue.Queue(maxsize=max_q)
@@ -166,7 +200,7 @@ class ProxyNode(Node):
             t.start()
 
             self._subscribers[topic_id] = self.create_subscription(
-                LaserScan,
+                msg_class,
                 route.input_topic,
                 self._make_topic_callback(topic_id),
                 sub_qos,
@@ -176,6 +210,7 @@ class ProxyNode(Node):
         for topic_id, route in self._routes.items():
             self.get_logger().info(
                 f"Route initialized topic_id='{topic_id}' "
+                f"msg_type='{route.message_type}' "
                 f"in='{route.input_topic}' "
                 f"out_crit='{route.critical_output}' "
                 f"out_noncrit='{route.noncritical_output}'"
@@ -183,12 +218,12 @@ class ProxyNode(Node):
 
     # ── Message forwarding (hot path) ─────────────────────────────────
 
-    def _make_topic_callback(self, topic_id: str) -> Callable[[LaserScan], None]:
-        def _cb(msg: LaserScan) -> None:
+    def _make_topic_callback(self, topic_id: str) -> Callable[[Any], None]:
+        def _cb(msg: Any) -> None:
             self._forward_message(topic_id, msg)
         return _cb
 
-    def _forward_message(self, topic_id: str, msg: LaserScan) -> None:
+    def _forward_message(self, topic_id: str, msg: Any) -> None:
         """Critical hot path — minimal, lock-free."""
         counters = self._counters_by_topic[topic_id]
         try:
@@ -247,7 +282,7 @@ class ProxyNode(Node):
 
             sub_id = decision.get("subscriber_id", "")
             state = decision.get("state", "UNKNOWN")
-            self._policy_engine.on_classifier_update(sub_id, state)
+            self._policy_engine.on_classifier_update(sub_id, state, decision)
 
             for topic_id in self._routes:
                 mode = self._policy_engine.get_mode(topic_id)
@@ -304,14 +339,10 @@ class ProxyNode(Node):
                         topic_id, nc_mode.value
                     )
 
-            # Ingest classifier snapshots into diagnostics
-            combined_snapshots = {}
-            for sub_id, curr_state in self._policy_engine.get_subscriber_states().items():
-                combined_snapshots[sub_id] = {
-                    "classification": curr_state,
-                }
-            if combined_snapshots:
-                self._diag_collector.ingest_classifier_snapshot(combined_snapshots)
+            # Ingest classifier snapshots into diagnostics (full decision data)
+            decisions = self._policy_engine.get_subscriber_decisions()
+            if decisions:
+                self._diag_collector.ingest_classifier_snapshot(decisions)
 
             # Ingest security stats into diagnostics
             sec_stats = self._security.get_stats()
@@ -392,6 +423,8 @@ def main(args=None) -> None:
     node = ProxyNode()
     try:
         rclpy.spin(node)
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        pass
     finally:
         node._shutdown_entities()
         node.destroy_node()
