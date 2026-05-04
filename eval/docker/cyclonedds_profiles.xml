@@ -3,19 +3,29 @@
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="https://cdds.io/config
                                 https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
-    <Domain id="any">
+    <Domain Id="any">
         <General>
             <Interfaces>
                 <NetworkInterface name="eth0" />
             </Interfaces>
+            <!-- Force UDP transport and unicast data traffic:
+                 - <Transport>udp</Transport> ensures UDP-only (no SHM)
+                 - <AllowMulticast>spdp</AllowMulticast> keeps multicast
+                   only for participant discovery, but forces UNICAST for
+                   all data — this matches FastDDS behaviour and makes the
+                   tc filter (ip dst <slow_sub>) match correctly. -->
+            <Transport>udp</Transport>
+            <AllowMulticast>spdp</AllowMulticast>
         </General>
         <Internal>
             <Watermarks>
-                <!-- ~200 samples × ~3KB (sensor_msgs/LaserScan) = ~600kB
-                     Tune WhcHigh if message type or size changes.
-                     WhcAdaptive=false gives deterministic, reproducible behaviour. -->
-                <WhcHigh>600kB</WhcHigh>
-                <WhcLow>300kB</WhcLow>
+                <!-- Mirror FastDDS: allocated_samples=200 + max_samples=200
+                     WhcHighInit = pre-allocation (~200 LaserScan samples)
+                     WhcHigh     = hard ceiling (same point)
+                     WhcLow not set — let Cyclone DDS default resume behaviour.
+                     WhcAdaptive=false for deterministic, reproducible behaviour. -->
+                <WhcHighInit>600KiB</WhcHighInit>
+                <WhcHigh>600KiB</WhcHigh>
                 <WhcAdaptive>false</WhcAdaptive>
             </Watermarks>
         </Internal>
