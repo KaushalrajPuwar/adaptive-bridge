@@ -7,7 +7,7 @@
 [![Fast DDS](https://img.shields.io/badge/DDS-FastDDS-2C8EBB?style=for-the-badge)](https://www.eprosima.com/)
 [![Cyclone DDS](https://img.shields.io/badge/DDS-CycloneDDS-00A86B?style=for-the-badge)](https://cyclonedds.io/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-E15850?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.2.0-5865F2?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-0.1.0-5865F2?style=for-the-badge)]()
 [![Build](https://img.shields.io/badge/Build-Passing-22C55E?style=for-the-badge)]()
 [![Tests](https://img.shields.io/badge/Tests-183%20passing-22C55E?style=for-the-badge)]()
 
