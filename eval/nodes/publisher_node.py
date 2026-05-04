@@ -15,6 +15,7 @@ Note: message construction is LaserScan-specific by default.  To use a
 different message type, set PUBLISH_MSG_TYPE and override the _build_msg()
 method or provide a message factory callback.
 """
+import csv
 import os
 import time
 import importlib
@@ -40,6 +41,7 @@ class EvalPublisher(Node):
         qos = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
             history=HistoryPolicy.KEEP_ALL,
+            depth=200,  # Embedded-grade max_samples (600 KB at 3KB/msg)
         )
         self._pub = self.create_publisher(self._msg_class, topic, qos)
         period = 1.0 / rate_hz
@@ -47,6 +49,7 @@ class EvalPublisher(Node):
         self._count = 0
         self._last_log_ns = time.monotonic_ns()
         self._last_log_count = 0
+        self._results_dir = os.environ.get("RESULTS_DIR", "/results")
         self.get_logger().info(
             f"EvalPublisher: {msg_type_str} on {topic}, {rate_hz}Hz, RELIABLE/KEEP_ALL"
         )
@@ -74,15 +77,35 @@ class EvalPublisher(Node):
     def _cb(self):
         self._count += 1
         msg = self._build_msg()
-        self._pub.publish(msg)
+        try:
+            self._pub.publish(msg)
+        except Exception:
+            # Writer pool full (max_samples reached) — skip gracefully.
+            # The node stays alive and retries on the next timer tick.
+            pass
 
         now_ns = time.monotonic_ns()
-        if now_ns - self._last_log_ns >= 10_000_000_000:
+        if now_ns - self._last_log_ns >= 5_000_000_000:
             delta_s = (now_ns - self._last_log_ns) / 1e9
             rate = (self._count - self._last_log_count) / delta_s if delta_s > 0 else 0
             self.get_logger().info(f"Published {self._count} msgs, rate: {rate:.1f} Hz")
+            self._write_throughput(now_ns, rate, delta_s)
             self._last_log_ns = now_ns
             self._last_log_count = self._count
+
+
+    def _write_throughput(self, timestamp_ns: int, rate_hz: float, window_s: float) -> None:
+        """Append one row to metrics/throughput.csv (5-second windows)."""
+        topic = os.environ.get("PUBLISH_TOPIC", "/scan")
+        path = f"{self._results_dir}/metrics/throughput.csv"
+        os.makedirs(f"{self._results_dir}/metrics", exist_ok=True)
+        file_exists = os.path.isfile(path)
+        with open(path, "a", newline="") as f:
+            w = csv.writer(f)
+            if not file_exists:
+                w.writerow(["timestamp_ns", "topic", "node", "rate_hz", "window_s"])
+            w.writerow([timestamp_ns, topic, "publisher",
+                        round(rate_hz, 1), round(window_s, 1)])
 
 
 def main():

@@ -19,4 +19,25 @@
         </rtps>
     </participant>
 
+    <!-- Default DataWriter profile: limit writer pool to 200 samples.
+         Enforces the embedded-grade max_samples limit that rclpy's
+         depth=200 with KEEP_ALL does NOT propagate to FastDDS.
+         resourceLimitsQos is a child of <topic> (not <qos>) in
+         FastDDS 2.14.6's XML schema — without this cap the default
+         of 5000 makes the writer pool effectively unbounded. -->
+    <data_writer profile_name="writer_profile" is_default_profile="true">
+        <topic>
+            <historyQos>
+                <kind>KEEP_ALL</kind>
+                <depth>200</depth>
+            </historyQos>
+            <resourceLimitsQos>
+                <max_samples>200</max_samples>
+                <max_instances>1</max_instances>
+                <max_samples_per_instance>200</max_samples_per_instance>
+                <allocated_samples>200</allocated_samples>
+            </resourceLimitsQos>
+        </topic>
+    </data_writer>
+
 </profiles>

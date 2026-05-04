@@ -1,0 +1,16 @@
+run_id: "2026-05-04_15-47-53_bridge_mild"
+scenario: "bridge_mild"
+description: "Adaptive bridge with mild GE bursty loss (~2.3% avg) — primary isolation evidence"
+start_time_utc: "2026-05-04T10:17:53Z"
+duration_s: 180
+rmw_implementation: "rmw_fastrtps_cpp"
+dds_vendor: "FastDDS"
+transport_mode: "udp_only"
+shm_disabled: true
+docker: true
+host_machine: "ambient-mesh-k8s-worker1"
+kernel: "6.14.0-29-generic"
+git_commit: "d56f93f"
+git_branch: "main"
+completed: true
+failure_reason: ""

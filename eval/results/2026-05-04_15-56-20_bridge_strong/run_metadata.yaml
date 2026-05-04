@@ -1,0 +1,16 @@
+run_id: "2026-05-04_15-56-20_bridge_strong"
+scenario: "bridge_strong"
+description: "Adaptive bridge with strong GE bursty loss (~9.2% avg) — robustness boundary"
+start_time_utc: "2026-05-04T10:26:20Z"
+duration_s: 180
+rmw_implementation: "rmw_fastrtps_cpp"
+dds_vendor: "FastDDS"
+transport_mode: "udp_only"
+shm_disabled: true
+docker: true
+host_machine: "ambient-mesh-k8s-worker1"
+kernel: "6.14.0-29-generic"
+git_commit: "d56f93f"
+git_branch: "main"
+completed: true
+failure_reason: ""

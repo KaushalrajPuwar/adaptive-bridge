@@ -3,11 +3,14 @@
 Shared base for evaluation subscriber nodes.
 
 Env vars:
-  SUBSCRIBE_TOPIC    – topic name (default /scan)
-  SUBSCRIBE_MSG_TYPE – ROS 2 message type string (default sensor_msgs/LaserScan)
-  CALLBACK_DELAY_MS  – optional delay in callback (default 0)
-  TARGET_NODE        – label written to CSV (default derived from node name)
-  RESULTS_DIR        – directory for CSV output
+  SUBSCRIBE_TOPIC       – topic name (default /scan)
+  SUBSCRIBE_MSG_TYPE    – ROS 2 message type string (default sensor_msgs/LaserScan)
+  SUBSCRIBE_RELIABILITY – RELIABLE or BEST_EFFORT (default RELIABLE)
+  SUBSCRIBE_HISTORY     – KEEP_ALL or KEEP_LAST (default KEEP_ALL)
+  SUBSCRIBE_DEPTH       – history depth (default 10, only used when KEEP_LAST)
+  CALLBACK_DELAY_MS     – optional delay in callback (default 0)
+  TARGET_NODE           – label written to CSV (default derived from node name)
+  RESULTS_DIR           – directory for CSV output
 """
 import csv
 import os
@@ -28,6 +31,16 @@ def _resolve_msg_type(msg_type_str: str):
     return getattr(mod, msg_name)
 
 
+def _rel_from_env() -> ReliabilityPolicy:
+    val = os.environ.get("SUBSCRIBE_RELIABILITY", "RELIABLE").upper()
+    return ReliabilityPolicy.BEST_EFFORT if val == "BEST_EFFORT" else ReliabilityPolicy.RELIABLE
+
+
+def _hist_from_env() -> HistoryPolicy:
+    val = os.environ.get("SUBSCRIBE_HISTORY", "KEEP_ALL").upper()
+    return HistoryPolicy.KEEP_LAST if val == "KEEP_LAST" else HistoryPolicy.KEEP_ALL
+
+
 class BaseSubscriber(Node):
     """Latency-measuring subscriber node (pure evaluation infrastructure)."""
 
@@ -42,8 +55,9 @@ class BaseSubscriber(Node):
         os.makedirs(f"{results_dir}/metrics", exist_ok=True)
 
         qos = QoSProfile(
-            reliability=ReliabilityPolicy.RELIABLE,
-            history=HistoryPolicy.KEEP_ALL,
+            reliability=_rel_from_env(),
+            history=_hist_from_env(),
+            depth=int(os.environ.get("SUBSCRIBE_DEPTH", "10")),
         )
         self._sub = self.create_subscription(self._msg_class, topic, self._cb, qos)
         self._results_dir = results_dir
@@ -57,9 +71,12 @@ class BaseSubscriber(Node):
         self._drops = 0
         self._lat_header = False
         self._drop_header = False
+        rel_str = "RELIABLE" if qos.reliability == ReliabilityPolicy.RELIABLE else "BEST_EFFORT"
+        hist_str = f"KEEP_LAST depth={qos.depth}" if qos.history == HistoryPolicy.KEEP_LAST else "KEEP_ALL"
+        qos_str = f"{rel_str} {hist_str}"
         self.get_logger().info(
             f"{node_name} listening on {topic} ({msg_type_str}), "
-            f"target_node={self._target_node}, delay={self._delay_ms}ms"
+            f"QoS={qos_str}, target_node={self._target_node}, delay={self._delay_ms}ms"
         )
 
     def _cb(self, msg):
@@ -111,7 +128,10 @@ class BaseSubscriber(Node):
                     "seq", "msg_age_ms", "e2e_latency_ms",
                 ])
                 if not self._lat_header:
-                    w.writeheader()
+                    # Only write header if file is empty (avoid duplicating headers)
+                    f.seek(0, os.SEEK_END)
+                    if f.tell() == 0:
+                        w.writeheader()
                     self._lat_header = True
                 while self._buf:
                     w.writerow(self._buf.popleft())
@@ -122,7 +142,9 @@ class BaseSubscriber(Node):
                     "total_received", "total_expected", "drop_rate",
                 ])
                 if not self._drop_header:
-                    w.writeheader()
+                    f.seek(0, os.SEEK_END)
+                    if f.tell() == 0:
+                        w.writeheader()
                     self._drop_header = True
                 while self._drop_buf:
                     w.writerow(self._drop_buf.popleft())

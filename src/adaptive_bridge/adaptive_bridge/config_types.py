@@ -127,10 +127,20 @@ class ClassifierConfig:
     promote_rtt_ms: float
     hysteresis_count: int
     allow_unknown_state: bool
+    subscriber_id: str = ""
+    """Label for the monitored endpoint in classification decisions.
+    Set this to a descriptive name for the subscriber being probed
+    (e.g. ``\"remote_rviz\"``, ``\"wifi_subscriber\"``).
+    When empty, the classifier falls back to the ProbeClient's sender ID."""
 
     @classmethod
     def from_dict(cls, data: Any, path: str = "classifier") -> "ClassifierConfig":
         d = _as_dict(data, path)
+        subscriber_id_raw = d.get("subscriber_id", "")
+        if subscriber_id_raw and isinstance(subscriber_id_raw, str) and subscriber_id_raw.strip():
+            subscriber_id_val = subscriber_id_raw.strip()
+        else:
+            subscriber_id_val = ""
         return cls(
             enabled=_as_bool(d.get("enabled"), _path(path, "enabled")),
             evaluate_rate_hz=_as_float(d.get("evaluate_rate_hz"), _path(path, "evaluate_rate_hz"), min_value=0.1),
@@ -140,6 +150,7 @@ class ClassifierConfig:
             promote_rtt_ms=_as_float(d.get("promote_rtt_ms"), _path(path, "promote_rtt_ms"), min_value=0.0),
             hysteresis_count=_as_int(d.get("hysteresis_count"), _path(path, "hysteresis_count"), min_value=1),
             allow_unknown_state=_as_bool(d.get("allow_unknown_state"), _path(path, "allow_unknown_state")),
+            subscriber_id=subscriber_id_val,
         )
 
 
@@ -174,12 +185,76 @@ class ProbeConfig:
 
 
 @dataclass(frozen=True)
+class ModePolicy:
+    """Per-state settings for the noncritical path (one per PolicyMode).
+
+    Controls what happens to noncritical traffic when the system enters each
+    of the five PolicyModes (NORMAL, DEGRADED, DISABLED, EMERGENCY, FAILURE).
+
+    Every field is user-configurable so that developers can define exactly
+    what each mode means for their deployment.
+    """
+
+    noncritical_max_rate_hz: float
+    """Hz cap on noncritical forwarding.  0.0 = block all noncritical."""
+
+    noncritical_depth: int
+    """KEEP_LAST depth for the noncritical publisher."""
+
+    noncritical_drop_policy: str
+    """``\"drop_oldest\"`` or ``\"drop_stale\"`` — which messages to drop first."""
+
+    stale_threshold_ms: int
+    """Messages older than this (milliseconds) are dropped as stale."""
+
+    max_noncritical_queue: int
+    """Maximum items in the noncritical publish queue before overflow drops."""
+
+    @classmethod
+    def from_dict(cls, data: Any, path: str = "modes.*") -> "ModePolicy":
+        d = _as_dict(data, path)
+        drop_policy = _as_str(
+            d.get("noncritical_drop_policy"), _path(path, "noncritical_drop_policy")
+        ).lower()
+        if drop_policy not in {"drop_oldest", "drop_latest", "drop_stale"}:
+            raise ValueError(
+                f"{_path(path, 'noncritical_drop_policy')} must be "
+                f"one of drop_oldest, drop_latest, drop_stale"
+            )
+        return cls(
+            noncritical_max_rate_hz=_as_float(
+                d.get("noncritical_max_rate_hz"),
+                _path(path, "noncritical_max_rate_hz"),
+                min_value=0.0,
+            ),
+            noncritical_depth=_as_int(
+                d.get("noncritical_depth"),
+                _path(path, "noncritical_depth"),
+                min_value=0,
+            ),
+            noncritical_drop_policy=drop_policy,
+            stale_threshold_ms=_as_int(
+                d.get("stale_threshold_ms"),
+                _path(path, "stale_threshold_ms"),
+                min_value=0,
+            ),
+            max_noncritical_queue=_as_int(
+                d.get("max_noncritical_queue"),
+                _path(path, "max_noncritical_queue"),
+                min_value=0,
+            ),
+        )
+
+
+@dataclass(frozen=True)
 class RoutingPolicyConfig:
     critical_always_forward: bool
     noncritical_enabled: bool
     noncritical_max_rate_hz: float
     noncritical_drop_policy: str
     stale_threshold_ms: int
+    modes: dict[str, ModePolicy] = field(default_factory=dict)
+    """Per-state mode policies.  Keys: normal, degraded, disabled, emergency, failure."""
 
     @classmethod
     def from_dict(cls, data: Any, path: str = "routing_policy") -> "RoutingPolicyConfig":
@@ -187,12 +262,29 @@ class RoutingPolicyConfig:
         drop_policy = _as_str(d.get("noncritical_drop_policy"), _path(path, "noncritical_drop_policy")).lower()
         if drop_policy not in {"drop_oldest", "drop_latest", "drop_stale"}:
             raise ValueError(f"{_path(path, 'noncritical_drop_policy')} must be one of drop_oldest, drop_latest, drop_stale")
+
+        # Parse optional modes section
+        modes_raw = d.get("modes", {})
+        modes: dict[str, ModePolicy] = {}
+        if modes_raw:
+            modes_data = _as_dict(modes_raw, _path(path, "modes"))
+            valid_keys = frozenset({"normal", "degraded", "disabled", "emergency", "failure"})
+            for key, value in modes_data.items():
+                k = _as_str(key, _path(path, "modes key"))
+                if k not in valid_keys:
+                    raise ValueError(
+                        f"Unknown mode key '{k}' in {_path(path, 'modes')}. "
+                        f"Valid keys: {', '.join(sorted(valid_keys))}"
+                    )
+                modes[k] = ModePolicy.from_dict(value, _path(path, f"modes.{k}"))
+
         return cls(
             critical_always_forward=_as_bool(d.get("critical_always_forward"), _path(path, "critical_always_forward")),
             noncritical_enabled=_as_bool(d.get("noncritical_enabled"), _path(path, "noncritical_enabled")),
             noncritical_max_rate_hz=_as_float(d.get("noncritical_max_rate_hz"), _path(path, "noncritical_max_rate_hz"), min_value=0.1),
             noncritical_drop_policy=drop_policy,
             stale_threshold_ms=_as_int(d.get("stale_threshold_ms"), _path(path, "stale_threshold_ms"), min_value=1),
+            modes=modes,
         )
 
 

@@ -96,23 +96,25 @@ failure_reason: ""
 """
 
 
-def apply_impairment(scenario: dict, compose_file: str) -> None:
-    """Run apply_tc.py with scenario impairment parameters."""
+def apply_impairment(scenario: dict, compose_file: str) -> bool:
+    """Run apply_tc.py with scenario impairment parameters.  Returns True on success."""
     imp = scenario["impairment"]
     if not imp.get("enabled"):
-        return
+        return True
     bw = imp.get("bandwidth_kbit", 0)
-    run(["sudo", sys.executable, str(_SCRIPT_DIR / "apply_tc.py"),
-         "--compose-file", compose_file,
-         "--action", "apply",
-         "--delay-mean", str(imp["delay_mean_ms"]),
-         "--delay-stddev", str(imp["delay_stddev_ms"]),
+    result = subprocess.run(
+        ["sudo", sys.executable, str(_SCRIPT_DIR / "apply_tc.py"),
+         "--compose-file", compose_file, "--action", "apply",
          "--loss-p", str(imp["loss_p"]),
          "--loss-r", str(imp["loss_r"]),
          "--loss-good-pct", str(imp["loss_good_pct"]),
          "--loss-bad", str(imp["loss_bad_pct"]),
          "--bandwidth", str(bw),
-         ], check=False)
+         ], capture_output=False, text=True, check=False)
+    if result.returncode != 0:
+        print(f"[WARN] apply_tc.py failed (exit {result.returncode})")
+        return False
+    return True
 
 
 def clean_impairment(compose_file: str) -> None:
@@ -134,16 +136,28 @@ def capture_logs(compose_file: str, run_dir: str) -> None:
         )
     except Exception:
         pass
-    # Save tc status
+    # Save tc status with packet statistics
     try:
         mode = "baseline" if "baseline" in os.path.basename(compose_file) else "adaptive"
         target_service = "publisher" if mode == "baseline" else "slow_subscriber"
         target_iface = "eth0" if mode == "baseline" else "ifb0"
         cid = run_capture(["sudo", "docker", "compose", "-f", compose_file, "ps", "-q", target_service])
         if cid:
-            tc_show = run_capture(["sudo", "docker", "exec", cid, "tc", "qdisc", "show", "dev", target_iface])
+            tc_qdisc = run_capture(["sudo", "docker", "exec", cid, "tc", "-s", "qdisc", "show", "dev", target_iface])
             with open(os.path.join(raw_dir, "tc_qdisc_show.txt"), "w") as f:
-                f.write(tc_show or "no tc rules")
+                f.write(tc_qdisc or "no tc rules")
+            tc_filter = run_capture(["sudo", "docker", "exec", cid, "tc", "-s", "filter", "show", "dev", target_iface])
+            with open(os.path.join(raw_dir, "tc_filter_show.txt"), "w") as f:
+                f.write(tc_filter or "no filters")
+    except Exception:
+        pass
+    # Save return-path tc from slow_subscriber egress
+    try:
+        slow_cid = run_capture(["sudo", "docker", "compose", "-f", compose_file, "ps", "-q", "slow_subscriber"])
+        if slow_cid:
+            return_tc = run_capture(["sudo", "docker", "exec", slow_cid, "tc", "-s", "qdisc", "show", "dev", "eth0"])
+            with open(os.path.join(raw_dir, "tc_return_path.txt"), "w") as f:
+                f.write(return_tc or "no return-path rules")
     except Exception:
         pass
 
@@ -219,7 +233,7 @@ def main():
         print(f"{'='*60}")
 
         # Metadata
-        start_utc = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        start_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         with open(os.path.join(run_dir, "run_metadata.yaml"), "w") as f:
             f.write(generate_run_metadata(scenario, run_id, start_utc, duration))
 
@@ -241,18 +255,21 @@ def main():
             print(f"[ERROR] Container startup failed: {e}")
             continue
 
-        # Wait for stability
-        print("[INFO] Waiting for DDS discovery (15s)...")
-        time.sleep(15)
+        # Wait for stability (allow full DDS discovery across all containers)
+        print("[INFO] Waiting for DDS discovery (25s)...")
+        time.sleep(25)
 
-        # Apply impairment
-        apply_impairment(scenario, compose_file)
+        # Apply impairment (skip pre-apply for toggle — the loop handles it)
+        if not scenario.get("toggle"):
+            tc_ok = apply_impairment(scenario, compose_file)
+            if not tc_ok and scenario.get("impairment", {}).get("enabled"):
+                print("[WARN] Impairment application failed — running without network degradation")
 
         # Run experiment
         print(f"[INFO] Running experiment for {duration}s...")
         start_ns = time.monotonic_ns()
         elapsed = 0
-        toggle_state = 0  # 0=clean, 1=impaired
+        toggle_state = 0  # 0=clean, 1=impaired (loop starts clean for toggle)
         while elapsed < duration:
             time.sleep(min(10, duration - elapsed))
             elapsed = int((time.monotonic_ns() - start_ns) / 1e9)
@@ -265,7 +282,9 @@ def main():
                     toggle_state = current_toggle
                     if toggle_state == 1:
                         print(f"\n  [TOGGLE ON at {elapsed}s]")
-                        apply_impairment(scenario, compose_file)
+                        tc_ok = apply_impairment(scenario, compose_file)
+                        if not tc_ok:
+                            print("[WARN] Toggle apply_tc failed — impairment not applied")
                     else:
                         print(f"\n  [TOGGLE OFF at {elapsed}s]")
                         clean_impairment(compose_file)

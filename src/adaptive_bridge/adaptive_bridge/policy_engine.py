@@ -27,6 +27,14 @@ class PolicyEngine:
     forced_critical_ids:
         Optional set of subscriber IDs that are always treated as CRITICAL
         regardless of their classifier state (manual override).
+
+    .. note::
+
+       Per-topic subscriber isolation is not yet implemented.  The current
+       :meth:`get_mode` checks ALL known subscribers and returns DEGRADED
+       if *any* is NONCRITICAL.  Future work should introduce a
+       subscriber-to-topic mapping so that one degraded subscriber does not
+       affect unrelated topics.
     """
 
     def __init__(

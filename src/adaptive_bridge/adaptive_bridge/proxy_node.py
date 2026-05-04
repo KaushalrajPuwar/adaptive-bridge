@@ -362,18 +362,67 @@ class ProxyNode(Node):
             )
             self._diag_collector.set_global_mode(mode_str)
 
-            # Apply safety mode overrides on noncritical policy
+            # ── Safety mode overrides on noncritical policy ──────────────
+            # Each mode applies its own user-configured policy from the
+            # `modes` YAML section.  SafetySupervisor ALWAYS wins when it
+            # enters EMERGENCY or FAILURE.
             supervisor_mode = self._supervisor.get_mode()
-            if supervisor_mode.value in ("DEGRADED", "EMERGENCY"):
+            bridge_cfg = self.config.get_bridge_config()
+            routing = bridge_cfg.routing_policy
+
+            if supervisor_mode == PolicyMode.EMERGENCY:
+                emergency_cfg = routing.modes.get("emergency") if routing.modes else None
+                if emergency_cfg is not None:
+                    emergency_rate = emergency_cfg.noncritical_max_rate_hz
+                    normal_cfg = routing.modes.get("normal")
+                    normal_rate = normal_cfg.noncritical_max_rate_hz if normal_cfg else routing.noncritical_max_rate_hz
+
+                    if emergency_rate == 0.0:
+                        self.get_logger().error("SAFETY: EMERGENCY — all noncritical disabled")
+                    elif emergency_rate >= normal_rate:
+                        self.get_logger().error(
+                            f"SAFETY: EMERGENCY entered but noncritical policy set to "
+                            f"{emergency_rate} Hz by user override"
+                        )
+                    else:
+                        self.get_logger().error(
+                            f"SAFETY: EMERGENCY — noncritical reduced to "
+                            f"{emergency_rate} Hz per user policy"
+                        )
+                else:
+                    self.get_logger().error(
+                        "SAFETY: EMERGENCY — no per-mode policy configured; "
+                        "noncritical path blocked (default behaviour)"
+                    )
+
                 for tid in self._routes:
-                    self._nc_policy.on_mode_change(tid, PolicyMode.DISABLED)
+                    self._nc_policy.on_mode_change(tid, PolicyMode.EMERGENCY)
+
+            elif supervisor_mode == PolicyMode.DEGRADED:
+                for tid in self._routes:
+                    self._nc_policy.on_mode_change(tid, PolicyMode.DEGRADED)
+
             elif supervisor_mode == PolicyMode.NORMAL:
                 for tid in self._routes:
                     self._nc_policy.on_mode_change(tid, PolicyMode.NORMAL)
 
+            # FAILURE is handled by is_shutdown_requested(), applied below
+
             if self._supervisor.is_shutdown_requested():
-                self.get_logger().error("SAFETY: FAILURE mode — initiating shutdown")
+                failure_cfg = routing.modes.get("failure") if routing.modes else None
+                failure_rate = failure_cfg.noncritical_max_rate_hz if failure_cfg else 0.0
+
+                if failure_rate > 0.0:
+                    self.get_logger().error(
+                        f"SAFETY: FAILURE mode — user policy overrides shutdown. "
+                        f"Noncritical={failure_rate} Hz. Proxy may be unstable."
+                    )
+                else:
+                    self.get_logger().error("SAFETY: FAILURE mode — initiating shutdown")
+
                 self._running = False
+                for tid in self._routes:
+                    self._nc_policy.on_mode_change(tid, PolicyMode.FAILURE)
 
             payload = self._diag_collector.gather_payload()
             msg = String()

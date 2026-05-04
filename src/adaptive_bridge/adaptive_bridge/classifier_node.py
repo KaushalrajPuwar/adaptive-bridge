@@ -39,6 +39,20 @@ class ClassifierNode(Node):
         probe_cfg = self._config_manager.get_probe_config()
         forced_ids = self._config_manager.get_forced_critical_ids()
 
+        # If the classifier is disabled in config, skip all initialization.
+        # The node still spins but produces no probe traffic or state output.
+        if not clf_cfg.enabled:
+            self._probe_client = None
+            self._state_pub = None
+            self._eval_timer = None
+            self._classifier = None
+            self._subscriber_label = ""
+            self.get_logger().info(
+                "ClassifierNode disabled via config — "
+                "no probe traffic or state publishing"
+            )
+            return
+
         self._classifier = SubscriberClassifier(
             config=clf_cfg,
             forced_critical_ids=forced_ids if forced_ids else None,
@@ -53,6 +67,10 @@ class ClassifierNode(Node):
             response_topic=probe_cfg.response_topic,
         )
         self._probe_client.start()
+
+        # Subscriber identity label — configurable in YAML, falls back to
+        # the ProbeClient's sender ID for backward compatibility.
+        self._subscriber_label = clf_cfg.subscriber_id
 
         self._state_pub = self.create_publisher(
             String, "/adaptive_bridge/classifier/state", 10
@@ -87,6 +105,8 @@ class ClassifierNode(Node):
 
     def _on_evaluate(self) -> None:
         """Periodic evaluation: sample probes -> classify -> publish."""
+        if self._eval_timer is None:  # disabled mode, timer should never fire
+            return
         self._eval_count += 1
         now_ns = time.monotonic_ns()
         self._last_eval_ts_ns = now_ns
@@ -95,7 +115,8 @@ class ClassifierNode(Node):
             stats = self._probe_client.get_stats()
             metrics = stats_to_probe_metrics(stats)
 
-            subscriber_id = self._probe_client._sender_id
+            subscriber_id = (self._subscriber_label if self._subscriber_label
+                             else self._probe_client._sender_id)
             decision = self._classifier.update(subscriber_id, metrics, now_ns=now_ns)
 
             payload_dict = decision.to_dict()
@@ -138,27 +159,35 @@ class ClassifierNode(Node):
         return self._eval_count
 
     def destroy(self) -> None:
-        try:
-            self._probe_client.stop()
-        except Exception:
-            pass
-        try:
-            self._probe_client.destroy()
-        except Exception:
-            pass
+        if self._probe_client is not None:
+            try:
+                self._probe_client.stop()
+            except Exception:
+                pass
+            try:
+                self._probe_client.destroy()
+            except Exception:
+                pass
         super().destroy_node()
 
 
 def main(args=None) -> None:
     """Run the classifier node."""
+    from rclpy.executors import MultiThreadedExecutor
+
     rclpy.init(args=args)
     node = ClassifierNode()
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
+    if node._probe_client is not None:
+        executor.add_node(node._probe_client)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
         pass
     finally:
-        node.destroy_node()
+        executor.shutdown()
+        node.destroy()
         try:
             rclpy.shutdown()
         except Exception:

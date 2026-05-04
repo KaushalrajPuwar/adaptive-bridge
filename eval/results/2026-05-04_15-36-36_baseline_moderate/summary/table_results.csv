@@ -1,0 +1,2 @@
+scenario,duration_s,crit_p50_ms,crit_p99_ms,crit_max_ms,crit_drop_mean,noncrit_p50_ms,noncrit_p99_ms,noncrit_drop_mean,pub_rate_mean_hz,proxy_cpu_mean
+baseline_moderate,180,0.97,14718.58,15310.55,0.0005,2601.9,25710.93,0.0005,21.36,0

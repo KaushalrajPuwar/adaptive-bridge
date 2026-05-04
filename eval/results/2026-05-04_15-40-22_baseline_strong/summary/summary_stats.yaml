@@ -1,0 +1,34 @@
+scenario: baseline_strong
+duration_s: 180
+
+critical_latency_ms:
+  p50: 1.02
+  p90: 11732.08
+  p95: 15042.61
+  p99: 17245.42
+  max: 18236.49
+  mean: 3170.59
+
+noncritical_latency_ms:
+  p50: 7586.5
+  p90: 22836.87
+  p95: 25015.19
+  p99: 28363.7
+  max: 29254.6
+  mean: 9699.43
+
+publisher_rate_hz:
+  mean: 19.22
+  std: 8.7
+
+critical_drop_rate:
+  mean: 0.0005
+
+noncritical_drop_rate:
+  mean: 0.0005
+
+proxy_cpu_percent:
+  mean: 0
+  max: 0
+
+classifier_transitions: 0

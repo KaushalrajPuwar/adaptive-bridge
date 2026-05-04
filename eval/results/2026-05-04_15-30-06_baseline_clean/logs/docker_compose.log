@@ -1,0 +1,31 @@
+critical_subscriber-1  | [INFO] [1777888819.713039411] [eval_critical_subscriber]: eval_critical_subscriber listening on /scan (sensor_msgs/LaserScan), QoS=RELIABLE KEEP_ALL, target_node=critical_subscriber, delay=0.0ms
+publisher-1            | [INFO] [1777888818.286607677] [eval_publisher]: EvalPublisher: sensor_msgs/LaserScan on /scan, 30.0Hz, RELIABLE/KEEP_ALL
+publisher-1            | [INFO] [1777888823.258349453] [eval_publisher]: Published 150 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888828.292003797] [eval_publisher]: Published 301 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888833.325023045] [eval_publisher]: Published 452 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888838.324836504] [eval_publisher]: Published 602 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888843.358395532] [eval_publisher]: Published 753 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888848.358191063] [eval_publisher]: Published 903 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888853.358979501] [eval_publisher]: Published 1053 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888858.391766825] [eval_publisher]: Published 1204 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888863.425164950] [eval_publisher]: Published 1355 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888868.458764593] [eval_publisher]: Published 1506 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888873.458418144] [eval_publisher]: Published 1656 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888878.491262004] [eval_publisher]: Published 1807 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888883.491251593] [eval_publisher]: Published 1957 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888888.491638290] [eval_publisher]: Published 2107 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888893.525000273] [eval_publisher]: Published 2258 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888898.558472527] [eval_publisher]: Published 2409 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888903.591477098] [eval_publisher]: Published 2560 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888908.624645353] [eval_publisher]: Published 2711 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888913.624687689] [eval_publisher]: Published 2861 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888918.658685264] [eval_publisher]: Published 3012 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888923.691757635] [eval_publisher]: Published 3163 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888928.692395812] [eval_publisher]: Published 3313 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888933.725057665] [eval_publisher]: Published 3464 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888938.758530426] [eval_publisher]: Published 3615 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888943.792125366] [eval_publisher]: Published 3766 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888948.824721862] [eval_publisher]: Published 3917 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888953.825405299] [eval_publisher]: Published 4067 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777888958.857917553] [eval_publisher]: Published 4218 msgs, rate: 30.0 Hz
+slow_subscriber-1      | [INFO] [1777888819.665282469] [eval_slow_subscriber]: eval_slow_subscriber listening on /scan (sensor_msgs/LaserScan), QoS=RELIABLE KEEP_ALL, target_node=slow_subscriber, delay=0.0ms

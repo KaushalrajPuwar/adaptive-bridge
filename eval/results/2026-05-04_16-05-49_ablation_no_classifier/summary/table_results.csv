@@ -1,0 +1,2 @@
+scenario,duration_s,crit_p50_ms,crit_p99_ms,crit_max_ms,crit_drop_mean,noncrit_p50_ms,noncrit_p99_ms,noncrit_drop_mean,pub_rate_mean_hz,proxy_cpu_mean
+ablation_no_classifier,180,1.09,1.79,141.9,0.0,2.15,3.29,0.0033,30.0,0

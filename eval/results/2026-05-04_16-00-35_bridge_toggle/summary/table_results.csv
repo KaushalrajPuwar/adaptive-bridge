@@ -1,0 +1,2 @@
+scenario,duration_s,crit_p50_ms,crit_p99_ms,crit_max_ms,crit_drop_mean,noncrit_p50_ms,noncrit_p99_ms,noncrit_drop_mean,pub_rate_mean_hz,proxy_cpu_mean
+bridge_toggle,240,1.11,1.76,8.87,0.0,1.97,3.07,0.0024,30.0,0

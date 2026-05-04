@@ -1,5 +1,5 @@
 # docker-compose.baseline.yml
-# Baseline topology: publisher + 2 subscribers + observer. No bridge.
+# Baseline topology: publisher + 2 subscribers. No bridge.
 services:
   publisher:
     image: adaptive_bridge_eval:latest
@@ -7,13 +7,15 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      - FASTRTPS_DEFAULT_PROFILES_FILE=/config/fastdds_profiles.xml
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - ROS_DOMAIN_ID=42
       - PUBLISH_RATE_HZ=30
+      - RESULTS_DIR=/results
     volumes:
       - ../nodes:/nodes:ro
-      - ./fastdds_profiles.xml:/config/fastdds_profiles.xml:ro
+      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - ../results:/results:rw
     networks:
       eval_net:
         ipv4_address: 172.28.0.2
@@ -22,14 +24,14 @@ services:
     image: adaptive_bridge_eval:latest
     command: python3 /nodes/critical_subscriber_node.py
     environment:
-      - FASTRTPS_DEFAULT_PROFILES_FILE=/config/fastdds_profiles.xml
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - ROS_DOMAIN_ID=42
       - SUBSCRIBE_TOPIC=/scan
       - RESULTS_DIR=/results
     volumes:
       - ../nodes:/nodes:ro
-      - ./fastdds_profiles.xml:/config/fastdds_profiles.xml:ro
+      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
       - ../results:/results:rw
     networks:
       eval_net:
@@ -40,8 +42,10 @@ services:
   slow_subscriber:
     image: adaptive_bridge_eval:latest
     command: python3 /nodes/slow_subscriber_node.py
+    cap_add:
+      - NET_ADMIN
     environment:
-      - FASTRTPS_DEFAULT_PROFILES_FILE=/config/fastdds_profiles.xml
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - ROS_DOMAIN_ID=42
       - SUBSCRIBE_TOPIC=/scan
@@ -49,30 +53,11 @@ services:
       - RESULTS_DIR=/results
     volumes:
       - ../nodes:/nodes:ro
-      - ./fastdds_profiles.xml:/config/fastdds_profiles.xml:ro
+      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
       - ../results:/results:rw
     networks:
       eval_net:
         ipv4_address: 172.28.0.4
-    depends_on:
-      - publisher
-
-  observer:
-    image: adaptive_bridge_eval:latest
-    command: python3 /nodes/observer_node.py
-    environment:
-      - FASTRTPS_DEFAULT_PROFILES_FILE=/config/fastdds_profiles.xml
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - ROS_DOMAIN_ID=42
-      - MODE=baseline
-      - RESULTS_DIR=/results
-    volumes:
-      - ../nodes:/nodes:ro
-      - ./fastdds_profiles.xml:/config/fastdds_profiles.xml:ro
-      - ../results:/results:rw
-    networks:
-      eval_net:
-        ipv4_address: 172.28.0.5
     depends_on:
       - publisher
 

@@ -1,0 +1,6 @@
+qdisc htb 1: root refcnt 9 r2q 10 default 0x2 direct_packets_stat 0 direct_qlen 1000
+ Sent 3304748 bytes 17018 pkt (dropped 0, overlimits 0 requeues 0) 
+ backlog 582b 3p requeues 0
+qdisc netem 10: parent 1:1 limit 1000 delay 20ms  10ms loss 0.3% 25%
+ Sent 3241436 bytes 16882 pkt (dropped 0, overlimits 0 requeues 0) 
+ backlog 582b 3p requeues 0

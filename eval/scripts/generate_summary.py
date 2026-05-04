@@ -14,6 +14,8 @@ import sys
 from collections import defaultdict
 from typing import Any
 
+import yaml
+
 
 def read_csv(path: str) -> list[dict]:
     """Read CSV file into list of dicts. Returns empty list if missing/empty."""
@@ -22,7 +24,12 @@ def read_csv(path: str) -> list[dict]:
         return rows
     with open(path, newline="") as f:
         reader = csv.DictReader(f)
+        header_fields = reader.fieldnames or []
         for row in reader:
+            # Filter out accidentally duplicated header rows
+            first_key = (header_fields[0] if header_fields else "")
+            if first_key and row.get(first_key) == first_key:
+                continue
             rows.append(row)
     return rows
 
@@ -104,16 +111,8 @@ def main():
     noncrit_lat = compute_latency_stats(latency_rows, "slow_subscriber")
     crit_drops = compute_drop_stats([r for r in drops_rows if r.get("node") == "critical_subscriber"])
     noncrit_drops = compute_drop_stats([r for r in drops_rows if r.get("node") == "slow_subscriber"])
-    pub_rate = compute_throughput_stats(throughput_rows, "/scan")
-    crit_rate = compute_throughput_stats(throughput_rows, "/adaptive_bridge/critical/scan") or pub_rate
-    cpu = compute_cpu_stats(cpu_rows)
-    transitions = count_classifier_transitions(classifier_rows)
 
-    # Run folder format: YYYY-MM-DD_HH-MM-SS_<scenario_name>
-    # Split on first 2 underscores to keep full scenario name intact
-    scenario = os.path.basename(run_dir).split("_", 2)[-1] if "_" in os.path.basename(run_dir) else "unknown"
-
-    # Read actual duration from metadata
+    # Read actual duration from metadata (must read BEFORE using duration_s)
     duration_s = 0
     metadata_path = os.path.join(run_dir, "run_metadata.yaml")
     if os.path.exists(metadata_path):
@@ -123,6 +122,17 @@ def main():
             duration_s = meta.get("duration_s", 0)
         except Exception:
             pass
+
+    pub_rate = compute_throughput_stats(throughput_rows, "/scan")
+    # Fallback: if no observer throughput.csv, compute rate from critical subscriber
+    if pub_rate["count"] == 0 and duration_s > 0 and crit_lat["count"] > 0:
+        pub_rate = {"mean": round(crit_lat["count"] / duration_s, 2), "std": 0, "count": crit_lat["count"]}
+    cpu = compute_cpu_stats(cpu_rows)
+    transitions = count_classifier_transitions(classifier_rows)
+
+    # Run folder format: YYYY-MM-DD_HH-MM-SS_<scenario_name>
+    # Split on first 2 underscores to keep full scenario name intact
+    scenario = os.path.basename(run_dir).split("_", 2)[-1] if "_" in os.path.basename(run_dir) else "unknown"
 
     # summary_stats.yaml
     yaml_content = f"""scenario: {scenario}
@@ -196,7 +206,7 @@ Mean: {pub_rate['mean']} Hz | Std: {pub_rate['std']}
 ## Drops
 Critical: {crit_drops['mean']} | Noncritical: {noncrit_drops['mean']}
 
-## CPU (observer proxy)
+## CPU (container proxy)
 Mean: {cpu['mean']}% | Max: {cpu['max']}%
 """
     with open(os.path.join(summary_dir, "report.md"), "w") as f:

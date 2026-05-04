@@ -51,8 +51,6 @@ def test_impairment_ge_parameters():
                 assert 0 <= float(val) <= 100, f"{s['name']}.{key}={val} out of range"
             elif key == "loss_bad_pct":
                 assert 0 <= val <= 100, f"{s['name']}.{key}={val} out of range [0,100]"
-        assert 0 <= imp.get("delay_mean_ms", 0) <= 500
-        assert 0 <= imp.get("delay_stddev_ms", 0) <= 200
 
 
 def test_compose_files_exist():

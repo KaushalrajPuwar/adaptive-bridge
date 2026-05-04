@@ -1,0 +1,34 @@
+scenario: bridge_moderate
+duration_s: 180
+
+critical_latency_ms:
+  p50: 1.1
+  p90: 1.44
+  p95: 1.55
+  p99: 1.75
+  max: 21.27
+  mean: 1.16
+
+noncritical_latency_ms:
+  p50: 2.11
+  p90: 2.64
+  p95: 2.84
+  p99: 3.27
+  max: 3.43
+  mean: 2.17
+
+publisher_rate_hz:
+  mean: 30.0
+  std: 0.0
+
+critical_drop_rate:
+  mean: 0.0
+
+noncritical_drop_rate:
+  mean: 0.0075
+
+proxy_cpu_percent:
+  mean: 0
+  max: 0
+
+classifier_transitions: 2

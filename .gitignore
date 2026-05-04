@@ -16,3 +16,4 @@ log/
 #project specific
 docs/
 .kilo/
+/eval/results/latest

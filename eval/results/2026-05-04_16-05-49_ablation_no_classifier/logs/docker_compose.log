@@ -1,0 +1,47 @@
+proxy-1            | [INFO] [1777890968.207959787] [adaptive_bridge_proxy]: Route initialized topic_id='scan_main' msg_type='sensor_msgs/LaserScan' in='/scan' out_crit='/adaptive_bridge/critical/scan' out_noncrit='/adaptive_bridge/noncritical/scan'
+publisher-1        | [INFO] [1777890966.572699105] [eval_publisher]: EvalPublisher: sensor_msgs/LaserScan on /scan, 30.0Hz, RELIABLE/KEEP_ALL
+publisher-1        | [INFO] [1777890971.545017370] [eval_publisher]: Published 150 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777890976.578120483] [eval_publisher]: Published 301 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777890981.578531803] [eval_publisher]: Published 451 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777890986.611571402] [eval_publisher]: Published 602 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777890991.645123532] [eval_publisher]: Published 753 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777890996.645139158] [eval_publisher]: Published 903 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891001.678156602] [eval_publisher]: Published 1054 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891006.711146630] [eval_publisher]: Published 1205 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891011.711723621] [eval_publisher]: Published 1355 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891016.745048352] [eval_publisher]: Published 1506 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891021.778251469] [eval_publisher]: Published 1657 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891026.811442009] [eval_publisher]: Published 1808 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891031.844937897] [eval_publisher]: Published 1959 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891036.845136472] [eval_publisher]: Published 2109 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891041.877784443] [eval_publisher]: Published 2260 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891046.877859973] [eval_publisher]: Published 2410 msgs, rate: 30.0 Hz
+classifier-1       | [INFO] [1777890969.344965896] [adaptive_bridge_classifier]: ClassifierNode disabled via config — no probe traffic or state publishing
+publisher-1        | [INFO] [1777891051.878298873] [eval_publisher]: Published 2560 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891056.911559474] [eval_publisher]: Published 2711 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891061.944641454] [eval_publisher]: Published 2862 msgs, rate: 30.0 Hz
+slow_subscriber-1  | [INFO] [1777890968.763371321] [classifier_logger]: ClassifierLogger started
+slow_subscriber-1  | [INFO] [1777890968.773051489] [eval_probe_responder]: ProbeResponder v1 started
+slow_subscriber-1  | [INFO] [1777890969.115454711] [eval_slow_subscriber]: eval_slow_subscriber listening on /adaptive_bridge/noncritical/scan (sensor_msgs/LaserScan), QoS=BEST_EFFORT KEEP_LAST depth=10, target_node=slow_subscriber, delay=0.0ms
+publisher-1        | [INFO] [1777891066.944794902] [eval_publisher]: Published 3012 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891071.944990095] [eval_publisher]: Published 3162 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891076.978234898] [eval_publisher]: Published 3313 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891082.011365127] [eval_publisher]: Published 3464 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891087.044276142] [eval_publisher]: Published 3615 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891092.044531850] [eval_publisher]: Published 3765 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891097.078250139] [eval_publisher]: Published 3916 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891102.111628967] [eval_publisher]: Published 4067 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891107.111489260] [eval_publisher]: Published 4217 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891112.111568699] [eval_publisher]: Published 4367 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891117.144468652] [eval_publisher]: Published 4518 msgs, rate: 30.0 Hz
+publisher-1        | [INFO] [1777891122.145275857] [eval_publisher]: Published 4668 msgs, rate: 30.0 Hz
+critical_subscriber-1  | [INFO] [1777890969.581969613] [eval_critical_subscriber]: eval_critical_subscriber listening on /adaptive_bridge/critical/scan (sensor_msgs/LaserScan), QoS=RELIABLE KEEP_ALL, target_node=critical_subscriber, delay=0.0ms
+publisher-1            | [INFO] [1777891127.145111823] [eval_publisher]: Published 4818 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777891132.177875872] [eval_publisher]: Published 4969 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777891137.177931942] [eval_publisher]: Published 5119 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777891142.178209695] [eval_publisher]: Published 5269 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777891147.211106919] [eval_publisher]: Published 5420 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777891152.211263293] [eval_publisher]: Published 5570 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777891157.211947034] [eval_publisher]: Published 5720 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777891162.244817313] [eval_publisher]: Published 5871 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777891167.277963653] [eval_publisher]: Published 6022 msgs, rate: 30.0 Hz

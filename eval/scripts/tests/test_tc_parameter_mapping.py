@@ -7,7 +7,7 @@ def test_ge_average_loss_formula():
     scenarios = [
         # (name, p, r, G, B, expected_avg)
         ("mild", 1, 15, 0.5, 30, 2.34),
-        ("moderate", 3, 15, 0.5, 30, 5.42),
+        ("moderate", 3, 15, 0.5, 40, 7.08),
         ("strong", 2, 10, 1.0, 50, 9.17),
     ]
     for name, p, r, G, B, expected in scenarios:
@@ -21,7 +21,7 @@ def test_gradient_holds():
         return (r * G + p * B) / (p + r)
 
     mild = _avg(1, 15, 0.5, 30)
-    moderate = _avg(3, 15, 0.5, 30)
+    moderate = _avg(3, 15, 0.5, 40)
     strong = _avg(2, 10, 1.0, 50)
 
     assert mild < moderate, f"Mild ({mild:.2f}) not < Moderate ({moderate:.2f})"

@@ -43,6 +43,7 @@ topic_qos_profiles:
 
 classifier:
   enabled: true
+  subscriber_id: ""
   evaluate_rate_hz: 2.0
   demote_loss_threshold: 0.04
   promote_loss_threshold: 0.02
@@ -69,6 +70,37 @@ routing_policy:
   noncritical_max_rate_hz: 10.0
   noncritical_drop_policy: "drop_oldest"
   stale_threshold_ms: 500
+  modes:
+    normal:
+      noncritical_max_rate_hz: 10.0
+      noncritical_depth: 5
+      noncritical_drop_policy: "drop_oldest"
+      stale_threshold_ms: 500
+      max_noncritical_queue: 50
+    degraded:
+      noncritical_max_rate_hz: 3.0
+      noncritical_depth: 2
+      noncritical_drop_policy: "drop_stale"
+      stale_threshold_ms: 250
+      max_noncritical_queue: 20
+    disabled:
+      noncritical_max_rate_hz: 0.0
+      noncritical_depth: 0
+      noncritical_drop_policy: "drop_oldest"
+      stale_threshold_ms: 0
+      max_noncritical_queue: 0
+    emergency:
+      noncritical_max_rate_hz: 0.0
+      noncritical_depth: 0
+      noncritical_drop_policy: "drop_oldest"
+      stale_threshold_ms: 0
+      max_noncritical_queue: 0
+    failure:
+      noncritical_max_rate_hz: 0.0
+      noncritical_depth: 0
+      noncritical_drop_policy: "drop_oldest"
+      stale_threshold_ms: 0
+      max_noncritical_queue: 0
 
 safety:
   preserve_critical_path: true

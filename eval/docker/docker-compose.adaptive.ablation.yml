@@ -1,0 +1,114 @@
+# docker-compose.adaptive.ablation.yml
+# Same as adaptive compose but uses bridge_ablation_no_classifier.yaml
+# (classifier disabled — isolates topic-split benefit)
+services:
+  publisher:
+    image: adaptive_bridge_eval:latest
+    command: python3 /nodes/publisher_node.py
+    environment:
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - ROS_DOMAIN_ID=42
+      - PUBLISH_RATE_HZ=30
+      - RESULTS_DIR=/results
+    volumes:
+      - ../nodes:/nodes:ro
+      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - /home/kaushalraj/adaptive_bridge_ws/install:/opt/ws1_install:ro
+      - ../results:/results:rw
+    networks:
+      eval_net:
+        ipv4_address: 172.28.0.2
+
+  proxy:
+    image: adaptive_bridge_eval:latest
+    command: ros2 run adaptive_bridge proxy_node --ros-args -p config_path:=/config/bridge_ablation_no_classifier.yaml
+    environment:
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - ROS_DOMAIN_ID=42
+    volumes:
+      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - /home/kaushalraj/adaptive_bridge_ws/install:/opt/ws1_install:ro
+      - ../config:/config:ro
+    networks:
+      eval_net:
+        ipv4_address: 172.28.0.3
+    depends_on:
+      - publisher
+
+  classifier:
+    image: adaptive_bridge_eval:latest
+    command: ros2 run adaptive_bridge classifier_node --ros-args -p config_path:=/config/bridge_ablation_no_classifier.yaml
+    environment:
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - ROS_DOMAIN_ID=42
+    volumes:
+      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - /home/kaushalraj/adaptive_bridge_ws/install:/opt/ws1_install:ro
+      - ../config:/config:ro
+    networks:
+      eval_net:
+        ipv4_address: 172.28.0.4
+    depends_on:
+      - proxy
+
+  critical_subscriber:
+    image: adaptive_bridge_eval:latest
+    command: python3 /nodes/critical_subscriber_node.py
+    environment:
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - ROS_DOMAIN_ID=42
+      - SUBSCRIBE_TOPIC=/adaptive_bridge/critical/scan
+      - RESULTS_DIR=/results
+    volumes:
+      - ../nodes:/nodes:ro
+      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - /home/kaushalraj/adaptive_bridge_ws/install:/opt/ws1_install:ro
+      - ../results:/results:rw
+    networks:
+      eval_net:
+        ipv4_address: 172.28.0.5
+    depends_on:
+      - proxy
+
+  slow_subscriber:
+    image: adaptive_bridge_eval:latest
+    command: >
+      bash -c "
+        python3 /nodes/slow_subscriber_node.py &
+        python3 /nodes/probe_responder_node.py &
+        python3 /nodes/classifier_logger.py &
+        wait
+      "
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profiles.xml
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - ROS_DOMAIN_ID=42
+      - SUBSCRIBE_TOPIC=/adaptive_bridge/noncritical/scan
+      - SUBSCRIBE_RELIABILITY=BEST_EFFORT
+      - SUBSCRIBE_HISTORY=KEEP_LAST
+      - SUBSCRIBE_DEPTH=10
+      - CALLBACK_DELAY_MS=0
+      - RESULTS_DIR=/results
+    volumes:
+      - ../nodes:/nodes:ro
+      - ./fastdds_profiles.xml:/fastdds_profiles.xml:ro
+      - /home/kaushalraj/adaptive_bridge_ws/install:/opt/ws1_install:ro
+      - ../results:/results:rw
+    networks:
+      eval_net:
+        ipv4_address: 172.28.0.6
+    depends_on:
+      - proxy
+
+networks:
+  eval_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

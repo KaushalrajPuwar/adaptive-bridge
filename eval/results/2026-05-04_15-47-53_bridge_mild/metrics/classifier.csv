@@ -1,0 +1,4 @@
+timestamp_ns,subscriber_id,subscriber_node,state,confidence,reason
+607500582761429,remote_endpoint,remote_endpoint,UNKNOWN,,promoting
+607512118872011,remote_endpoint,remote_endpoint,CRITICAL,,stable_critical
+607524082499580,remote_endpoint,remote_endpoint,NONCRITICAL,,high_loss

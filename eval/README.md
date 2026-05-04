@@ -36,14 +36,14 @@ cat results/latest/summary/summary_stats.yaml
 |------|------|------------|----------|
 | baseline_clean | baseline | none | 120s |
 | baseline_mild | baseline | GE ~2.3% avg loss | 180s |
-| baseline_moderate | baseline | GE ~5.4% avg loss | 180s |
+| baseline_moderate | baseline | GE ~7.1% avg loss | 180s |
 | baseline_strong | baseline | GE ~9.2% avg loss | 180s |
 | bridge_clean | adaptive | none | 120s |
 | bridge_mild | adaptive | GE ~2.3% avg loss | 180s |
-| bridge_moderate | adaptive | GE ~5.4% avg loss | 180s |
+| bridge_moderate | adaptive | GE ~7.1% avg loss | 180s |
 | bridge_strong | adaptive | GE ~9.2% avg loss | 180s |
 | bridge_toggle | adaptive | toggle moderate (60s) | 240s |
-| ablation_no_classifier | adaptive | GE ~5.4% avg loss | 180s |
+| ablation_no_classifier | adaptive | GE ~7.1% avg loss | 180s |
 
 All scenario parameters defined in `scenarios.yaml`.
 
@@ -51,10 +51,12 @@ All scenario parameters defined in `scenarios.yaml`.
 
 We use the Gilbert-Elliot two-state Markov bursty loss model (Linux `tc netem loss gemodel`).
 This produces short high-loss bursts separated by clean periods, matching real IEEE 802.11
-channel contention behaviour. Delay is applied with a normal distribution to capture
-real WiFi RTT variation.
+channel contention behaviour.  Loss is applied only to the remote (slow) subscriber; the
+critical subscriber operate on a clean network segment.
 
-No bandwidth caps are applied — the model is pure GE + variable delay.
+All impaired scenarios include a 50 Mbps bandwidth cap, representing a realistic
+congested modern WiFi uplink.  No software delay emulation is used — the GE loss model
+alone drives DDS backpressure without buffer-based delay artifacts.
 
 ## Results Format
 

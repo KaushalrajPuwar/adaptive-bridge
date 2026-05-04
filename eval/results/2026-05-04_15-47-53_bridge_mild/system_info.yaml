@@ -1,0 +1,9 @@
+cpu_model: "Intel(R) Xeon(R) Silver 4114T CPU @ 2.20GHz"
+cpu_cores: 8
+ram_gb: 15.6
+os: "Ubuntu 24.04.4 LTS"
+docker_version: "29.1.3"
+ros_distro: "jazzy"
+python_version: "3.12.3"
+kernel: "6.14.0-29-generic"
+host_machine: "ambient-mesh-k8s-worker1"

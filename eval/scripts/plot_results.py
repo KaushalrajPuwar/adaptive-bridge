@@ -25,7 +25,16 @@ def read_csv(path: str) -> list[dict]:
     if not os.path.exists(path):
         return []
     with open(path, newline="") as f:
-        return list(csv.DictReader(f))
+        reader = csv.DictReader(f)
+        rows = []
+        header_fields = reader.fieldnames or []
+        for row in reader:
+            # Filter out accidentally duplicated header rows
+            first_key = (header_fields[0] if header_fields else "")
+            if first_key and row.get(first_key) == first_key:
+                continue
+            rows.append(row)
+        return rows
 
 
 def cdf(vals: list[float]):
@@ -89,7 +98,7 @@ def plot_drops(rows: list[dict], output: str, title: str):
             ts = [t - t0 for t in ts]
         ax.plot(ts, drops, '-', linewidth=1.5, label=node, alpha=0.8)
     ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Cumulative Drops")
+    ax.set_ylabel("Drops per Interval")
     ax.set_title(title)
     ax.legend(fontsize=8)
     ax.grid(True, alpha=0.3)
