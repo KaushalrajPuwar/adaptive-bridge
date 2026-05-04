@@ -20,8 +20,8 @@ constructive, and collaborative.
 
 ```bash
 # Clone your fork
-git clone https://github.com/your-org/adaptive_bridge_ws.git
-cd adaptive_bridge_ws
+git clone https://github.com/KaushalrajPuwar/adaptive-bridge.git
+cd adaptive-bridge
 
 # Build
 colcon build --packages-select adaptive_bridge

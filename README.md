@@ -115,7 +115,7 @@ flowchart TB
 ```bash
 # Clone the repository
 git clone https://github.com/KaushalrajPuwar/adaptive-bridge.git
-cd adaptive_bridge_ws
+cd adaptive-bridge
 
 # Build
 colcon build --packages-select adaptive_bridge
