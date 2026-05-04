@@ -1,9 +1,16 @@
 <package format="3">
     <name>adaptive_bridge</name>
     <version>0.1.0</version>
-    <description>Adaptive Bridge: dynamic topic decoupling and QoS adaptation</description>
+    <description>
+        Adaptive Bridge is a ROS 2 middleware-level proxy that mitigates the
+        slow-subscriber backpressure coupling problem by decoupling critical
+        and non-critical subscriber paths. It prevents a degraded subscriber
+        (e.g. a remote visualisation tool over WiFi) from degrading the
+        publisher or affecting safety-critical consumers.
+    </description>
     <maintainer email="kaushalrajpuwar@gmail.com">Kaushalraj Puwar</maintainer>
     <license>Apache-2.0</license>
+    <author email="kaushalrajpuwar@gmail.com">Kaushalraj Puwar</author>
 
     <depend>rclpy</depend>
     <depend>std_msgs</depend>

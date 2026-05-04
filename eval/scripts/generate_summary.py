@@ -112,14 +112,18 @@ def main():
     crit_drops = compute_drop_stats([r for r in drops_rows if r.get("node") == "critical_subscriber"])
     noncrit_drops = compute_drop_stats([r for r in drops_rows if r.get("node") == "slow_subscriber"])
 
-    # Read actual duration from metadata (must read BEFORE using duration_s)
+    # Read actual duration and RMW from metadata
     duration_s = 0
+    rmw_impl = "unknown"
+    dds_vendor = "unknown"
     metadata_path = os.path.join(run_dir, "run_metadata.yaml")
     if os.path.exists(metadata_path):
         try:
             with open(metadata_path) as f:
                 meta = yaml.safe_load(f)
             duration_s = meta.get("duration_s", 0)
+            rmw_impl = meta.get("rmw_implementation", "unknown")
+            dds_vendor = meta.get("dds_vendor", "unknown")
         except Exception:
             pass
 
@@ -136,6 +140,8 @@ def main():
 
     # summary_stats.yaml
     yaml_content = f"""scenario: {scenario}
+rmw_implementation: "{rmw_impl}"
+dds_vendor: "{dds_vendor}"
 duration_s: {duration_s}
 
 critical_latency_ms:
@@ -177,18 +183,20 @@ classifier_transitions: {transitions}
     with open(os.path.join(summary_dir, "table_results.csv"), "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
-            "scenario", "duration_s", "crit_p50_ms", "crit_p99_ms", "crit_max_ms",
+            "scenario", "rmw_implementation", "duration_s", "crit_p50_ms", "crit_p99_ms", "crit_max_ms",
             "crit_drop_mean", "noncrit_p50_ms", "noncrit_p99_ms", "noncrit_drop_mean",
             "pub_rate_mean_hz", "proxy_cpu_mean",
         ])
         writer.writerow([
-            scenario, str(duration_s), crit_lat['p50'], crit_lat['p99'], crit_lat['max'],
+            scenario, rmw_impl, str(duration_s), crit_lat['p50'], crit_lat['p99'], crit_lat['max'],
             crit_drops['mean'], noncrit_lat['p50'], noncrit_lat['p99'],
             noncrit_drops['mean'], pub_rate['mean'], cpu['mean'],
         ])
 
     # report.md
     md_content = f"""# Results: {scenario}
+
+**RMW:** {rmw_impl} ({dds_vendor})
 
 ## Critical Subscriber Latency
 | p50 | p95 | p99 | max |

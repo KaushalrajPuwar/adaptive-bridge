@@ -20,6 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description="Collect system info")
     parser.add_argument("--output", default="system_info.yaml", help="Output YAML path")
     parser.add_argument("--ros-distro", default=os.environ.get("ROS_DISTRO", "unknown"))
+    parser.add_argument("--rmw", default="rmw_fastrtps_cpp", help="RMW implementation used")
     args = parser.parse_args()
 
     cpu_model = "unknown"
@@ -60,6 +61,8 @@ def main():
 
     py_ver = run(["python3", "--version"]).replace("Python ", "")
 
+    dds_vendor = "FastDDS" if "fastrtps" in args.rmw.lower() else "CycloneDDS"
+
     content = f"""cpu_model: "{cpu_model}"
 cpu_cores: {cpu_cores}
 ram_gb: {ram_gb}
@@ -67,6 +70,8 @@ os: "{os_name}"
 docker_version: "{docker_ver}"
 ros_distro: "{args.ros_distro}"
 python_version: "{py_ver}"
+rmw_implementation: "{args.rmw}"
+dds_vendor: "{dds_vendor}"
 kernel: "{platform.release()}"
 host_machine: "{platform.node()}"
 """

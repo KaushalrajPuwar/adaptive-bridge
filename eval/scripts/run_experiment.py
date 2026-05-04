@@ -27,6 +27,38 @@ import yaml
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _WS2_DIR = _SCRIPT_DIR.parent
 
+# RMW-specific substitution tables for compose file injection
+_RMW_SUBSTITUTIONS: dict[str, list[tuple[str, str]]] = {
+    "rmw_cyclonedds_cpp": [
+        ("RMW_IMPLEMENTATION=rmw_fastrtps_cpp",
+         "RMW_IMPLEMENTATION=rmw_cyclonedds_cpp"),
+        ("FASTRTPS_DEFAULT_PROFILES_FILE=",
+         "CYCLONEDDS_URI=file://"),
+        ("fastdds_profiles.xml",
+         "cyclonedds_profiles.xml"),
+    ],
+    # Add rows here to support additional RMW implementations
+}
+
+
+def _inject_rmw(compose_text: str, rmw_impl: str) -> str:
+    """Return compose YAML with RMW-specific substitutions applied.
+
+    For ``rmw_fastrtps_cpp`` (default) the text is returned unchanged.
+    For other RMWs the ``_RMW_SUBSTITUTIONS`` table is applied in order.
+    """
+    if rmw_impl == "rmw_fastrtps_cpp":
+        return compose_text
+    subs = _RMW_SUBSTITUTIONS.get(rmw_impl)
+    if subs is None:
+        raise ValueError(
+            f"Unsupported RMW: {rmw_impl}. "
+            f"Available: {list(_RMW_SUBSTITUTIONS.keys())}"
+        )
+    for old, new in subs:
+        compose_text = compose_text.replace(old, new)
+    return compose_text
+
 
 def load_scenarios(path: str) -> list[dict]:
     with open(path) as f:
@@ -57,10 +89,9 @@ def run_capture(cmd: list[str], timeout: int = 30) -> str:
 
 
 def generate_run_metadata(scenario: dict, run_id: str, start_utc: str,
-                          duration_s: int) -> str:
+                          duration_s: int, rmw: str = "rmw_fastrtps_cpp") -> str:
     """Generate run_metadata.yaml content."""
-    rmw = os.environ.get("RMW_IMPLEMENTATION", "rmw_fastrtps_cpp")
-    dds_vendor = "FastDDS" if "fastrtps" in rmw.lower() else rmw
+    dds_vendor = "FastDDS" if "fastrtps" in rmw.lower() else "CycloneDDS"
     git_commit = ""
     git_branch = ""
     try:
@@ -200,9 +231,25 @@ def main():
         sys.exit(0)
 
     compose_file = str(_WS2_DIR / scenario["compose_file"])
+    _original_compose = compose_file  # saved so we can clean up temp files later
     if not os.path.exists(compose_file):
         print(f"[ERROR] Compose file not found: {compose_file}")
         sys.exit(1)
+
+    # RMW injection — substitute compose file values when not using default FastDDS
+    if args.rmw != "rmw_fastrtps_cpp":
+        with open(compose_file) as f:
+            original = f.read()
+        modified = _inject_rmw(original, args.rmw)
+        # Sanity check: verify that the substitution actually changed something
+        if modified == original:
+            print(f"[WARN] RMW injection produced no changes for {args.rmw} — "
+                  f"check _RMW_SUBSTITUTIONS table")
+        tmp_path = compose_file + "." + args.rmw.replace("/", "_") + ".yml"
+        with open(tmp_path, "w") as f:
+            f.write(modified)
+        compose_file = tmp_path
+        print(f"[INFO] RMW injection: using {os.path.basename(tmp_path)}")
 
     # Build Docker image (unless skip)
     if not args.skip_build:
@@ -218,6 +265,11 @@ def main():
         clean_impairment(compose_file)
         run(["sudo", "docker", "compose", "-f", compose_file, "down", "-v", "--remove-orphans"],
             check=False, timeout=60)
+        if compose_file != _original_compose:
+            try:
+                os.remove(compose_file)
+            except Exception:
+                pass
         sys.exit(1)
 
     signal.signal(signal.SIGINT, _cleanup_on_interrupt)
@@ -235,12 +287,13 @@ def main():
         # Metadata
         start_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         with open(os.path.join(run_dir, "run_metadata.yaml"), "w") as f:
-            f.write(generate_run_metadata(scenario, run_id, start_utc, duration))
+            f.write(generate_run_metadata(scenario, run_id, start_utc, duration, args.rmw))
 
         # System info
         run([sys.executable, str(_SCRIPT_DIR / "collect_system_info.py"),
              "--output", os.path.join(run_dir, "system_info.yaml"),
-             "--ros-distro", "jazzy"])
+             "--ros-distro", "jazzy",
+             "--rmw", args.rmw])
 
         # Create subdirectories
         for sub in ["metrics", "logs", "raw", "plots", "summary"]:
@@ -299,6 +352,14 @@ def main():
         clean_impairment(compose_file)
         run(["sudo", "docker", "compose", "-f", compose_file, "down", "-v", "--remove-orphans"],
             check=False, timeout=60)
+
+        # Clean up temp compose file if one was created by RMW injection
+        if compose_file != _original_compose:
+            try:
+                os.remove(compose_file)
+                print(f"[INFO] Cleaned up temp compose file: {os.path.basename(compose_file)}")
+            except Exception as exc:
+                print(f"[WARN] Could not clean up temp compose file: {exc}")
 
         # Copy CSVs from shared volume into run folder
         shared_metrics = os.path.join(args.output_dir, "metrics")
