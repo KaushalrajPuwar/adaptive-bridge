@@ -1,4 +1,6 @@
-# Adaptive Bridge
+<div align="center">
+
+<h1>Adaptive Bridge</h1>
 
 [![ROS 2](https://img.shields.io/badge/ROS%202-Jazzy-blue?style=for-the-badge&logo=ros)](https://docs.ros.org/en/jazzy/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
@@ -9,11 +11,11 @@
 [![Build](https://img.shields.io/badge/Build-Passing-22C55E?style=for-the-badge)]()
 [![Tests](https://img.shields.io/badge/Tests-183%20passing-22C55E?style=for-the-badge)]()
 
-A **ROS 2 middleware proxy** that decouples critical and non-critical subscriber paths to prevent a degraded remote subscriber from degrading the publisher or affecting safety-critical local consumers.
+</div>
 
-**The problem:** A slow subscriber (e.g., a visualisation node over WiFi) causes DDS backpressure that chokes the publisher and all other subscribers — including safety-critical ones on the same topic. Traditional QoS tuning doesn't solve the structural coupling.
+In ROS 2 based systems, every subscriber on a topic is coupled to every other subscriber through the DDS writer's shared history cache. When one subscriber falls behind, perhaps because it is connected over a degraded WiFi link, the entire write pipeline backs up. The publisher stalls, and every consumer of that topic, including safety-critical ones, suffers the same delay. Traditional QoS tuning, such as switching to BEST_EFFORT, helps only at the margins; it does not break the structural coupling between subscribers with fundamentally different latency requirements.
 
-**The solution:** Adaptive Bridge sits between the publisher and subscribers, splits traffic into critical and non-critical topics, and applies dynamic rate-limiting + drop policies based on real-time link-quality classification. The critical path stays clean regardless of what happens on the non-critical side.
+Adaptive Bridge solves this by inserting a lightweight proxy between the publisher and its subscribers. The proxy subscribes to the original topic and republishes each message onto two separate output topics: one for critical consumers and one for noncritical or degraded consumers. A classifier monitors subscriber health through active probes and adjusts per-topic rate limits and drop policies in real time. The critical path is preserved regardless of what happens on the noncritical side. This decoupling means that a visualisation node on a congested WiFi link can experience packet loss and rate limiting without affecting a safety-critical navigation node on the same data stream.
 
 ---
 
@@ -34,6 +36,7 @@ A **ROS 2 middleware proxy** that decouples critical and non-critical subscriber
   - [Development](#development)
     - [Code Structure](#code-structure)
   - [Troubleshooting](#troubleshooting)
+  - [Contributing](#contributing)
   - [License](#license)
 
 ---
@@ -93,7 +96,7 @@ flowchart TB
     Proxy -. "subscriber health" .-> Classifier
 ```
 
-**Key design rule:** All publishers are pre-created at startup and never recreated at runtime. Topic routes are frozen after initialisation.
+**Key design rule:** All publishers are pre-created at startup and never recreated at runtime. Topic routes are frozen after initialization.
 
 ---
 
@@ -152,21 +155,21 @@ This starts the proxy with one configured topic (`/scan` → `/adaptive_bridge/c
 The bridge is configured via a single YAML file. Three example profiles are provided:
 
 ```yaml
-# config/default.yaml — Full-featured: classifier on, probes 5 Hz
-# config/minimal.yaml — Lightweight: lower resource usage
-# config/stress.yaml  — High-throughput: faster evaluation, tighter safety
+# config/default.yaml: Full-featured: classifier on, probes 5 Hz
+# config/minimal.yaml: Lightweight: lower resource usage
+# config/stress.yaml: High-throughput: faster evaluation, tighter safety
 ```
 
 **Key configuration sections:**
 
 | Section | Purpose |
 |---|---|
-| `topics` | Topic routes — input, critical output, noncritical output, message type |
+| `topics` | Topic routes (input, critical output, noncritical output, message type) |
 | `qos_profiles` | Named QoS templates (reliability, history, depth, durability) |
 | `classifier` | Probe-based health monitoring thresholds (RTT, loss, hysteresis) |
 | `probes` | Active probe protocol parameters (rate, timeout, window) |
 | `routing_policy` | Per-mode policies: normal, degraded, disabled, emergency, failure |
-| `safety` | Safety supervisor configuration (queue limits, overload behavior) |
+| `safety` | Safety supervisor configuration (queue limits, overload behaviour) |
 | `security` | HMAC signing and replay protection |
 | `diagnostics` | Diagnostics publishing interval and verbosity |
 
@@ -332,11 +335,11 @@ docs/                          # Architecture, design, results
 | Symptom | Cause | Solution |
 |---|---|---|
 | **Containers not starting** | Docker daemon overload | Wait 30 s and retry; add `--skip-build` to avoid image rebuild |
-| **No impairment visible** | SHM enabled (default on some DDS configs) | Ensure XML profile disables SHM — see `fastdds_profiles.xml` / `cyclonedds_profiles.xml` |
+| **No impairment visible** | SHM enabled (default on some DDS configs) | Ensure XML profile disables SHM. See `fastdds_profiles.xml` or `cyclonedds_profiles.xml` |
 | **Classifier shows `UNKNOWN`** | No probe data received | Check probe responder is running; verify topic names match |
 | **Bridge not forwarding** | Config file not found | Pass absolute path via `config_path:=` parameter |
 | **Tests failing** | WS1 install not sourced | Run `source install/setup.bash` first |
-| **`CYCLONEDDS_URI` not working** | URI format incorrect | Use `file:///absolute/path/to/file.xml` — note the triple `///` |
+| **`CYCLONEDDS_URI` not working** | URI format incorrect | Use `file:///absolute/path/to/file.xml` with triple `///` prefix |
 
 </details>
 

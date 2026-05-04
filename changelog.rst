@@ -3,7 +3,7 @@ Adaptive Bridge Project Changelog
 
 This changelog records the evolution of the Adaptive Bridge project.
 
-v0.1.0 (Prototype Development — 2026-04-28)
+v0.1.0 (Prototype Development, 2026-04-28)
 ------------------------------------------
 
 Initial prototype with basic ROS 2 proxy node for LaserScan forwarding,
@@ -16,7 +16,7 @@ dual critical/noncritical output streams, and supporting utilities.
 - Probe client/responder utilities for RTT measurement.
 - Repository hygiene, packaging, and build determinism baseline.
 
-2026-04-29 — Configuration, Data Models, and Multi-Topic Proxy
+2026-04-29: Configuration, Data Models, and Multi-Topic Proxy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Typed configuration contract with schema validation (BridgeConfig,
@@ -35,15 +35,15 @@ dual critical/noncritical output streams, and supporting utilities.
   logic, resolves profiles with three-tier fallback (per-topic → role
   default → global fallback).
 - QoS policy catalog documented in docs/15_QOS_MATRIX.md.
-- Test coverage for config validation, proxy multi-topic behavior, QoS
+- Test coverage for config validation, proxy multi-topic behaviour, QoS
   resolution, and topic registry invariants.
 
-2026-04-29 — Noncritical Degradation and Diagnostics
+2026-04-29: Noncritical Degradation and Diagnostics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - NoncriticalPolicyEngine: token-bucket rate limiter, staleness-based TTL
   drops, mode-disabled drops. Integrated into ProxyNode with isolated
-  threading — critical publish path never blocked by noncritical policy.
+  threading: critical publish path never blocked by noncritical policy.
 - Diagnostics schema v1.0 with validate_payload() and assert_valid().
   Pure-Python DiagnosticsCollector (no ROS dependency) + ROS publisher
   wrapper owned by ProxyNode. Payload includes schema version, wall-clock
@@ -52,7 +52,7 @@ dual critical/noncritical output streams, and supporting utilities.
 - Unit tests for rate limiting, staleness, mode changes, drop statistics,
   and diagnostics payload structure.
 
-2026-05-01 — Probe Protocol Hardening
+2026-05-01: Probe Protocol Hardening
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Probe payloads versioned (v=1) with monotonic nanosecond timestamps.
@@ -68,7 +68,7 @@ dual critical/noncritical output streams, and supporting utilities.
 - 30 unit tests covering payload format, sanity checks, bounded storage,
   rolling metrics, get_stats() contract, and end-to-end round trip.
 
-2026-05-01 — Classifier Core Library
+2026-05-01: Classifier Core Library
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Pure-Python SubscriberClassifier state machine with UNKNOWN,
@@ -85,10 +85,10 @@ dual critical/noncritical output streams, and supporting utilities.
 - Transition table documented in docs/05_CLASSIFIER_AND_PROBES.md
   (section §17.1) with definitions for is_bad, is_good, and fuzzy zone.
 - 30 unit tests covering state machine invariants, hysteresis counters,
-  reason codes, flap suppression, override behavior, snapshots, reset,
+  reason codes, flap suppression, override behaviour, snapshots, reset,
   and fuzzy-zone handling.
 
-2026-05-01 — Code Review Fixes
+2026-05-01: Code Review Fixes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fixed UNKNOWN state promotion: now correctly requires is_good metrics
@@ -103,7 +103,7 @@ dual critical/noncritical output streams, and supporting utilities.
 - Updated proxy_node.py docstring to reflect cumulative feature scope
   across all development phases.
 
-2026-05-01 — Classifier Node Runtime Integration
+2026-05-01: Classifier Node Runtime Integration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fully wired classifier_node: embeds ProbeClient for active metric
@@ -122,7 +122,7 @@ dual critical/noncritical output streams, and supporting utilities.
   (no-responder operation, recovery after responder appears), and
   metrics conversion.
 
-2026-05-01 — Proxy + Classifier Policy Coupling
+2026-05-01: Proxy + Classifier Policy Coupling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Created PolicyEngine: maps classifier subscriber states to per-topic
@@ -140,7 +140,7 @@ dual critical/noncritical output streams, and supporting utilities.
 - 12 unit tests covering policy engine damping, safety bias, forced-critical
   override, and diagnostics snapshot.
 
-2026-05-01 — Safety Supervisor and Failure-Mode Runtime
+2026-05-01: Safety Supervisor and Failure-Mode Runtime
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Created SafetySupervisor: pure-Python global mode machine with
@@ -154,7 +154,7 @@ dual critical/noncritical output streams, and supporting utilities.
 - 16 unit tests covering initialization, degrade triggers, escalation,
   recovery cooldowns, terminal FAILURE, edge cases, and enum compliance.
 
-2026-05-01 — Security Controls for Control Plane Signals
+2026-05-01: Security Controls for Control Plane Signals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Implemented HMAC signing and verification for classifier decision payloads
@@ -171,7 +171,7 @@ dual critical/noncritical output streams, and supporting utilities.
 - 21 unit tests covering HMAC sign/verify, replay protection, mode
   enforcement, diagnostics counters, and round-trip.
 
-2026-05-01 — Launch, Runtime UX, and Config Ergonomics
+2026-05-01: Launch, Runtime UX, and Config Ergonomics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - adaptive_bridge.launch.py: default config_path now auto-resolves to
@@ -187,7 +187,7 @@ dual critical/noncritical output streams, and supporting utilities.
 - Updated classifier_node description from "wiring in progress" to
   current production state.
 
-2026-05-01 — Test Pyramid Completion
+2026-05-01: Test Pyramid Completion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Created test_stress_scenarios.py: 8 tests covering sustained rate
@@ -202,24 +202,24 @@ dual critical/noncritical output streams, and supporting utilities.
   "Step 1" reference to current Step 15+ context.
 - Total test count: 171 -> 183 (12 new tests).
 
-2026-05-02 — Evaluation Workspace (WS2) and Classifier Threshold Tuning
+2026-05-02: Evaluation Workspace (WS2) and Classifier Threshold Tuning
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Created ``eval/`` (WS2, inside adaptive_bridge_ws) — evaluation harness for
+- Created ``eval/`` (WS2, inside adaptive_bridge_ws): evaluation harness for
   reproducible baseline-vs-adaptive experiments under controlled network
   impairment.
 - Switched from constant-delay/independent-loss tc model to Gilbert-Elliot
   bursty loss channel model (``tc netem loss gemodel``).  GE produces
   short high-loss bursts separated by clean periods, matching real IEEE
   802.11 channel contention behaviour and triggering DDS backpressure at
-  realistic average loss rates (2.3%–9.2%).
+  realistic average loss rates (2.3% to 9.2%).
 - Delay uses normal distribution (mean ± stddev) for realistic RTT variation.
 - Three impairment levels: mild (2.3% avg), moderate (5.4% avg), strong
   (9.2% avg).  Scenario gradient enables spectrum analysis.
 - 10 experiment scenarios defined in ``scenarios.yaml`` covering baseline,
   adaptive bridge, toggle impairment, and ablation.
 - Evaluation nodes package (``eval_nodes``) created as a standalone ROS2
-  package depending on ``adaptive_bridge`` — downstream-user perspective.
+  package depending on ``adaptive_bridge``: downstream-user perspective.
 - Orchestration: one-command runner (``run_experiment.py``), tc manager
   with ``ifb`` ingress shaping for adaptive mode, post-run summary/plot
   generation (``generate_summary.py``, ``plot_results.py``).
@@ -231,7 +231,7 @@ dual critical/noncritical output streams, and supporting utilities.
 - WS2 evaluation config uses experiment-tuned thresholds (demote_loss 1.5%)
    appropriate for controlled Docker impairment with near-zero baseline loss.
 
-2026-05-05 — Cross-RMW Validation and Packaging
+2026-05-05: Cross-RMW Validation and Packaging
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Full 10-scenario evaluation matrix executed on **Cyclone DDS** (Eclipse)
@@ -240,7 +240,7 @@ dual critical/noncritical output streams, and supporting utilities.
   ``AllowMulticast=spdp`` (unicast data), ``WhcHigh=600kiB`` byte-based
   WHC watermark (~200 LaserScan messages), ``WhcAdaptive=false``.
 - Added dynamic RMW injection to ``run_experiment.py`` (``--rmw`` flag):
-  substitutes compose-file values at runtime — no separate compose files
+  substitutes compose-file values at runtime: no separate compose files
   needed per RMW.
 - Fixed Cyclone DDS impairment: ``AllowMulticast=spdp`` forces unicast
   data so the tc filter (``ip dst <sub_ip>``) matches correctly.

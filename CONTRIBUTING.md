@@ -79,13 +79,13 @@ from .models import TopicRoute
 
 ## Architecture Rules
 
-These are frozen design decisions — do not break them:
+These are frozen design decisions. Do not break them:
 
-- **No runtime publisher recreation** — all publishers are pre-created
+- **No runtime publisher recreation.** All publishers are pre-created
   at startup and never recreated.
 - **Critical path must never be intentionally degraded** by non-critical
   policy code.
-- **Topic routes are immutable after startup** — no dynamic route
+- **Topic routes are immutable after startup.** No dynamic route
   addition or removal at runtime.
 - **Decisions must be recorded** in `docs/11_DECISIONS_LOG.md` for any
   architecture-altering change.
