@@ -77,19 +77,6 @@ from .models import TopicRoute
    - Why it's needed
    - How it was tested
 
-## Architecture Rules
-
-These are frozen design decisions. Do not break them:
-
-- **No runtime publisher recreation.** All publishers are pre-created
-  at startup and never recreated.
-- **Critical path must never be intentionally degraded** by non-critical
-  policy code.
-- **Topic routes are immutable after startup.** No dynamic route
-  addition or removal at runtime.
-- **Decisions must be recorded** in `docs/11_DECISIONS_LOG.md` for any
-  architecture-altering change.
-
 ## Adding a New Message Type
 
 1. Add the message package to `package.xml` dependencies.
