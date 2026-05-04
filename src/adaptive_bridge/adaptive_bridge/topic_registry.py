@@ -1,3 +1,12 @@
+"""
+Deterministic topic-route builder and registry.
+
+The :class:`TopicRegistry` consumes a list of ``TopicConfig`` objects and
+builds a dict of ``TopicRoute`` instances.  It enforces uniqueness of
+route IDs and topic names, provides deterministic name-sanitisation, and
+exposes registry-level queries (``list_routes()``, ``get_route()``) for
+the proxy and diagnostics subsystems.
+"""
 from __future__ import annotations
 
 from collections import OrderedDict

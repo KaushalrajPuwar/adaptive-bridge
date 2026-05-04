@@ -1,3 +1,12 @@
+"""
+Configuration loading, validation, and typed access for Adaptive Bridge.
+
+Provides the ``ConfigManager`` class that loads YAML configuration files,
+validates schema conformance, and exposes typed getters (``get_topics()``,
+``get_qos_policy()``, ``get_classifier_config()``, etc.) for all runtime
+subsystems.  Schema validation catches missing keys, invalid QoS names,
+and duplicate topic IDs at startup rather than at runtime.
+"""
 from __future__ import annotations
 
 import os

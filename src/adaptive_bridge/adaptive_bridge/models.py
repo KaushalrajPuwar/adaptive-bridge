@@ -1,3 +1,12 @@
+"""
+Shared runtime data structures for Adaptive Bridge.
+
+Defines the core types shared across proxy, classifier, diagnostics, and
+tests: :class:`TopicRoute` (input + critical + noncritical topic names),
+:class:`TopicCounters` (per-topic message counters), :class:`PolicyMode`
+(``NORMAL``, ``DEGRADED``, ``DISABLED``, ``FAILURE``), and serialisation
+helpers for diagnostics export.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

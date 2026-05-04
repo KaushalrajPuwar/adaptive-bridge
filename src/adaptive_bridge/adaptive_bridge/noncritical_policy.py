@@ -1,4 +1,12 @@
-# src/adaptive_bridge/adaptive_bridge/noncritical_policy.py
+"""
+Token-bucket rate limiter and drop-policy engine for noncritical topics.
+
+The :class:`NoncriticalPolicyEngine` implements per-topic rate limiting
+(token bucket), staleness / TTL rejection, queue-overflow dropping, and
+mode-driven policy switching (``NORMAL`` → ``DEGRADED`` → ``DISABLED``).
+The critical publish path is guaranteed to never block on noncritical
+policy operations.
+"""
 import time
 from typing import Tuple, Optional, Dict
 from dataclasses import dataclass

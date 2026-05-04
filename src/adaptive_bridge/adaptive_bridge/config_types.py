@@ -1,3 +1,12 @@
+"""
+Typed configuration data models for Adaptive Bridge.
+
+Defines :class:`TopicConfig`, :class:`QoSPolicy`, :class:`ClassifierConfig`,
+:class:`SafetyConfig`, :class:`SecurityConfig`, :class:`DiagnosticsConfig`,
+:class:`RoutingPolicyConfig`, and :class:`BridgeConfig` as frozen dataclasses.
+These replace loose dict handling throughout the codebase and provide
+compile-time (mypy) and runtime (type-check) safety for configuration data.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

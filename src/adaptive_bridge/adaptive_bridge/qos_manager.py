@@ -1,4 +1,12 @@
-# src/adaptive_bridge/adaptive_bridge/qos_manager.py
+"""
+QoS profile resolution and validation for Adaptive Bridge.
+
+The :class:`QoSManager` loads a catalog of named QoS templates from YAML,
+resolves per-topic and per-role profiles (critical / noncritical) with a
+fallback chain (per-topic override → role default → global fallback), and
+exposes a ``describe()`` method for diagnostic observability of which
+profile was selected and why.
+"""
 import os
 import yaml
 from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy, QoSDurabilityPolicy

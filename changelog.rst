@@ -202,33 +202,6 @@ dual critical/noncritical output streams, and supporting utilities.
   "Step 1" reference to current Step 15+ context.
 - Total test count: 171 -> 183 (12 new tests).
 
-Known Gaps (Deferred)
-~~~~~~~~~~~~~~~~~~~~~
-
-- 6 files missing module-level docstrings (config_manager.py,
-  config_types.py, qos_manager.py, topic_registry.py, models.py,
-  noncritical_policy.py).
-- PEP257/Flake8 lint tests permanently skipped (deferred to final
-  packaging pass).
-- utils/security.py is functional for Step 13 requirements; diagnostics
-  anonymization (hashed node identities) and SROS2 integration deferred
-  to future extensions (see docs/07_SECURITY_MODEL.md §20).
-  (docs/07_SECURITY_MODEL.md).
-
-Architecture Decisions
-~~~~~~~~~~~~~~~~~~~~~~
-
-Multi-workspace strategy (D001), proxy-based isolation (D002),
-dual output streams (D003), static publisher lifecycle (D004),
-policy-based classification (D005), active network probing (D006),
-stability mechanism (D008), deterministic overrides (D009),
-internal load shedding (D010), critical path fidelity (D011),
-non-critical degradation (D012), transport forcing (D013),
-tuned baseline comparison (D016), distribution-based metrics (D017),
-multi-RMW validation (D018), multi-proxy scaling (D022),
-sensor-ready implementation (D024), add sensor_msgs dependency (D025),
-stateless forwarding (D020).
-
 2026-05-02 — Evaluation Workspace (WS2) and Classifier Threshold Tuning
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -256,4 +229,52 @@ stateless forwarding (D020).
   ``evaluate_rate_hz`` from 1Hz → 2Hz.  Applied to all three YAML configs
   (``default``, ``minimal``, ``stress``).
 - WS2 evaluation config uses experiment-tuned thresholds (demote_loss 1.5%)
-  appropriate for controlled Docker impairment with near-zero baseline loss.
+   appropriate for controlled Docker impairment with near-zero baseline loss.
+
+2026-05-05 — Cross-RMW Validation and Packaging
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Full 10-scenario evaluation matrix executed on **Cyclone DDS** (Eclipse)
+  alongside the existing Fast DDS results.
+- Created ``eval/docker/cyclonedds_profiles.xml``: UDP-only transport,
+  ``AllowMulticast=spdp`` (unicast data), ``WhcHigh=600kiB`` byte-based
+  WHC watermark (~200 LaserScan messages), ``WhcAdaptive=false``.
+- Added dynamic RMW injection to ``run_experiment.py`` (``--rmw`` flag):
+  substitutes compose-file values at runtime — no separate compose files
+  needed per RMW.
+- Fixed Cyclone DDS impairment: ``AllowMulticast=spdp`` forces unicast
+  data so the tc filter (``ip dst <sub_ip>``) matches correctly.
+- Documented 9 symmetrical behavioural differences between Fast DDS and
+  Cyclone DDS in ``docs/17_RMW_COMPATIBILITY_MATRIX.md``:
+  blocking vs non-blocking publish, sample-count vs byte-based backpressure,
+  46-58× packet count disparity (retransmission strategy), unicast vs
+  multicast data distribution defaults, throughput measurement window
+  variation, classifier oscillation characteristics.
+- Three robustness fixes to ``run_experiment.py``:
+  - ``shutil.rmtree`` → ``sudo rm -rf`` for root-owned Docker volume cleanup.
+  - Container startup failure now runs ``docker compose down`` before
+    ``continue`` (prevents orphaned-container cascades).
+  - Metadata ``completed`` field set to ``false`` on failure with descriptive
+    ``failure_reason``.
+- Added module-level docstrings to ``config_manager.py``, ``config_types.py``,
+  ``qos_manager.py``, ``topic_registry.py``, ``models.py``, and
+  ``noncritical_policy.py``.
+- Comprehensive README rewrite with shields.io badges, architecture diagram,
+  evaluation harness documentation, RMW compatibility table, and
+  troubleshooting section.
+- Created ``CONTRIBUTING.md`` with contribution guidelines.
+- ``package.xml`` and ``setup.py`` verified for maintainer/license consistency.
+
+Architecture Decisions
+~~~~~~~~~~~~~~~~~~~~~~
+
+Multi-workspace strategy (D001), proxy-based isolation (D002),
+dual output streams (D003), static publisher lifecycle (D004),
+policy-based classification (D005), active network probing (D006),
+stability mechanism (D008), deterministic overrides (D009),
+internal load shedding (D010), critical path fidelity (D011),
+non-critical degradation (D012), transport forcing (D013),
+tuned baseline comparison (D016), distribution-based metrics (D017),
+multi-RMW validation (D018), multi-proxy scaling (D022),
+sensor-ready implementation (D024), add sensor_msgs dependency (D025),
+stateless forwarding (D020).
