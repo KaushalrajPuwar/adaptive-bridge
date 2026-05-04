@@ -1,0 +1,2 @@
+scenario,rmw_implementation,duration_s,crit_p50_ms,crit_p99_ms,crit_max_ms,crit_drop_mean,noncrit_p50_ms,noncrit_p99_ms,noncrit_drop_mean,pub_rate_mean_hz,proxy_cpu_mean
+baseline_strong,rmw_cyclonedds_cpp,180,0.8,1.19,25075.08,0.0007,5663.92,22833.01,0.0007,21.86,0

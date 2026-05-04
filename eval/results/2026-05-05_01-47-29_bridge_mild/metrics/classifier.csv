@@ -1,0 +1,9 @@
+timestamp_ns,subscriber_id,subscriber_node,state,confidence,reason
+645696296451940,remote_endpoint,remote_endpoint,UNKNOWN,,promoting
+645697296824147,remote_endpoint,remote_endpoint,CRITICAL,,stable_critical
+645719296142908,remote_endpoint,remote_endpoint,NONCRITICAL,,high_loss
+645800796614516,remote_endpoint,remote_endpoint,CRITICAL,,stable_critical
+645805296124895,remote_endpoint,remote_endpoint,NONCRITICAL,,high_rtt
+645831796994576,remote_endpoint,remote_endpoint,CRITICAL,,recovered
+645843796470867,remote_endpoint,remote_endpoint,NONCRITICAL,,high_rtt_and_loss
+645903296175968,remote_endpoint,remote_endpoint,CRITICAL,,recovered

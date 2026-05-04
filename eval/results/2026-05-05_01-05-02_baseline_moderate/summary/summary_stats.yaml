@@ -1,0 +1,36 @@
+scenario: baseline_moderate
+rmw_implementation: "rmw_cyclonedds_cpp"
+dds_vendor: "CycloneDDS"
+duration_s: 180
+
+critical_latency_ms:
+  p50: 0.81
+  p90: 1.01
+  p95: 1.07
+  p99: 1.23
+  max: 15400.95
+  mean: 32.96
+
+noncritical_latency_ms:
+  p50: 6223.08
+  p90: 11456.23
+  p95: 13298.23
+  p99: 14731.03
+  max: 15968.35
+  mean: 5884.92
+
+publisher_rate_hz:
+  mean: 21.93
+  std: 12.06
+
+critical_drop_rate:
+  mean: 0.0005
+
+noncritical_drop_rate:
+  mean: 0.0005
+
+proxy_cpu_percent:
+  mean: 0
+  max: 0
+
+classifier_transitions: 0

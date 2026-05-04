@@ -1,0 +1,27 @@
+critical_subscriber-1  | [INFO] [1777923315.614491508] [eval_critical_subscriber]: eval_critical_subscriber listening on /scan (sensor_msgs/LaserScan), QoS=RELIABLE KEEP_ALL, target_node=critical_subscriber, delay=0.0ms
+publisher-1            | [INFO] [1777923314.827579565] [eval_publisher]: EvalPublisher: sensor_msgs/LaserScan on /scan, 30.0Hz, RELIABLE/KEEP_ALL
+publisher-1            | [INFO] [1777923319.802392714] [eval_publisher]: Published 150 msgs, rate: 30.0 Hz
+slow_subscriber-1      | [INFO] [1777923315.903491027] [eval_slow_subscriber]: eval_slow_subscriber listening on /scan (sensor_msgs/LaserScan), QoS=RELIABLE KEEP_ALL, target_node=slow_subscriber, delay=0.0ms
+publisher-1            | [INFO] [1777923324.802805055] [eval_publisher]: Published 300 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777923329.836645871] [eval_publisher]: Published 451 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777923334.869001823] [eval_publisher]: Published 602 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777923339.870085313] [eval_publisher]: Published 752 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777923344.903025455] [eval_publisher]: Published 903 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777923349.936021666] [eval_publisher]: Published 1054 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777923361.554253487] [eval_publisher]: Published 1061 msgs, rate: 0.6 Hz
+publisher-1            | [INFO] [1777923366.569242420] [eval_publisher]: Published 1213 msgs, rate: 30.3 Hz
+publisher-1            | [INFO] [1777923371.569817685] [eval_publisher]: Published 1363 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777923383.255413882] [eval_publisher]: Published 1389 msgs, rate: 2.2 Hz
+publisher-1            | [INFO] [1777923388.269485991] [eval_publisher]: Published 1541 msgs, rate: 30.3 Hz
+publisher-1            | [INFO] [1777923403.701953603] [eval_publisher]: Published 1667 msgs, rate: 8.2 Hz
+publisher-1            | [INFO] [1777923408.702400480] [eval_publisher]: Published 1818 msgs, rate: 30.2 Hz
+publisher-1            | [INFO] [1777923427.689242434] [eval_publisher]: Published 1939 msgs, rate: 6.4 Hz
+publisher-1            | [INFO] [1777923432.702514940] [eval_publisher]: Published 2091 msgs, rate: 30.3 Hz
+publisher-1            | [INFO] [1777923437.735807096] [eval_publisher]: Published 2242 msgs, rate: 30.0 Hz
+publisher-1            | [INFO] [1777923453.535864926] [eval_publisher]: Published 2254 msgs, rate: 0.8 Hz
+publisher-1            | [INFO] [1777923458.535883479] [eval_publisher]: Published 2405 msgs, rate: 30.2 Hz
+publisher-1            | [INFO] [1777923477.059256310] [eval_publisher]: Published 2554 msgs, rate: 8.0 Hz
+publisher-1            | [INFO] [1777923482.069220150] [eval_publisher]: Published 2706 msgs, rate: 30.3 Hz
+publisher-1            | [INFO] [1777923500.645900338] [eval_publisher]: Published 2846 msgs, rate: 7.5 Hz
+publisher-1            | [INFO] [1777923505.669417483] [eval_publisher]: Published 2998 msgs, rate: 30.3 Hz
+publisher-1            | [INFO] [1777923510.702684267] [eval_publisher]: Published 3149 msgs, rate: 30.0 Hz

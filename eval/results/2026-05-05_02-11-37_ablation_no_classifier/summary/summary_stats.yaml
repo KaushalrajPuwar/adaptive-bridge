@@ -1,0 +1,36 @@
+scenario: ablation_no_classifier
+rmw_implementation: "rmw_cyclonedds_cpp"
+dds_vendor: "CycloneDDS"
+duration_s: 180
+
+critical_latency_ms:
+  p50: 1.05
+  p90: 1.37
+  p95: 1.46
+  p99: 1.66
+  max: 11.85
+  mean: 1.11
+
+noncritical_latency_ms:
+  p50: 1.89
+  p90: 2.33
+  p95: 2.49
+  p99: 2.79
+  max: 5.08
+  mean: 1.93
+
+publisher_rate_hz:
+  mean: 30.0
+  std: 0.0
+
+critical_drop_rate:
+  mean: 0.0
+
+noncritical_drop_rate:
+  mean: 0.0031
+
+proxy_cpu_percent:
+  mean: 0
+  max: 0
+
+classifier_transitions: 0

@@ -1,0 +1,36 @@
+scenario: bridge_toggle
+rmw_implementation: "rmw_cyclonedds_cpp"
+dds_vendor: "CycloneDDS"
+duration_s: 240
+
+critical_latency_ms:
+  p50: 1.05
+  p90: 1.37
+  p95: 1.47
+  p99: 1.69
+  max: 27.67
+  mean: 1.11
+
+noncritical_latency_ms:
+  p50: 1.73
+  p90: 2.15
+  p95: 2.33
+  p99: 2.64
+  max: 12.45
+  mean: 1.79
+
+publisher_rate_hz:
+  mean: 30.0
+  std: 0.0
+
+critical_drop_rate:
+  mean: 0.0
+
+noncritical_drop_rate:
+  mean: 0.0027
+
+proxy_cpu_percent:
+  mean: 0
+  max: 0
+
+classifier_transitions: 5

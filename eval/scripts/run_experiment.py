@@ -306,6 +306,32 @@ def main():
                  "--remove-orphans"], timeout=120)
         except Exception as e:
             print(f"[ERROR] Container startup failed: {e}")
+            # Mark the run as failed in metadata
+            metadata_file = os.path.join(run_dir, "run_metadata.yaml")
+            try:
+                with open(metadata_file, "r") as f:
+                    content = f.read()
+                content = content.replace("completed: true", "completed: false")
+                content = content.replace('failure_reason: ""',
+                                         f'failure_reason: "container startup failed: {str(e)[:150]}"')
+                with open(metadata_file, "w") as f:
+                    f.write(content)
+            except Exception:
+                pass
+            # Best-effort cleanup of partially-started containers
+            try:
+                subprocess.run(
+                    ["sudo", "docker", "compose", "-f", compose_file,
+                     "down", "-v", "--remove-orphans"],
+                    capture_output=False, check=False, timeout=30)
+            except Exception:
+                pass
+            # Clean up temp compose file if one was created
+            if compose_file != _original_compose:
+                try:
+                    os.remove(compose_file)
+                except Exception:
+                    pass
             continue
 
         # Wait for stability (allow full DDS discovery across all containers)
@@ -371,8 +397,11 @@ def main():
                     shutil.copy2(src, dst)
                     print(f"  [CSV] copied {csv_file} to run folder")
             # Clean shared directory for next run (after a brief settle)
+            # Use sudo rm -rf because containers write files as root,
+            # so shutil.rmtree (which runs as the invoking user) would
+            # silently fail to delete root-owned files.
             time.sleep(0.5)
-            shutil.rmtree(shared_metrics, ignore_errors=True)
+            subprocess.run(["sudo", "rm", "-rf", shared_metrics], check=False)
 
         # Post-run processing for EVERY repetition
         print("[INFO] Generating summary and plots...")

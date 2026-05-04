@@ -1,0 +1,36 @@
+scenario: bridge_strong
+rmw_implementation: "rmw_cyclonedds_cpp"
+dds_vendor: "CycloneDDS"
+duration_s: 180
+
+critical_latency_ms:
+  p50: 1.05
+  p90: 1.36
+  p95: 1.47
+  p99: 1.64
+  max: 26.63
+  mean: 1.11
+
+noncritical_latency_ms:
+  p50: 1.81
+  p90: 2.21
+  p95: 2.37
+  p99: 2.87
+  max: 46.95
+  mean: 1.95
+
+publisher_rate_hz:
+  mean: 30.0
+  std: 0.0
+
+critical_drop_rate:
+  mean: 0.0
+
+noncritical_drop_rate:
+  mean: 0.006
+
+proxy_cpu_percent:
+  mean: 0
+  max: 0
+
+classifier_transitions: 3

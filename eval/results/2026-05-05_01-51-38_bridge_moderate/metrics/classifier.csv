@@ -1,0 +1,5 @@
+timestamp_ns,subscriber_id,subscriber_node,state,confidence,reason
+643726238986573,remote_endpoint,remote_endpoint,UNKNOWN,,promoting
+643727238402984,remote_endpoint,remote_endpoint,CRITICAL,,stable_critical
+643751238931043,remote_endpoint,remote_endpoint,NONCRITICAL,,high_loss
+643939738656408,remote_endpoint,remote_endpoint,CRITICAL,,recovered

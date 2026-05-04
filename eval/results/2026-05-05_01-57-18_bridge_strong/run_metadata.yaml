@@ -1,0 +1,16 @@
+run_id: "2026-05-05_01-57-18_bridge_strong"
+scenario: "bridge_strong"
+description: "Adaptive bridge with strong GE bursty loss (~9.2% avg) — robustness boundary"
+start_time_utc: "2026-05-04T20:27:18Z"
+duration_s: 180
+rmw_implementation: "rmw_cyclonedds_cpp"
+dds_vendor: "CycloneDDS"
+transport_mode: "udp_only"
+shm_disabled: true
+docker: true
+host_machine: "ambient-mesh-k8s-worker1"
+kernel: "6.14.0-29-generic"
+git_commit: "3257463"
+git_branch: "main"
+completed: true
+failure_reason: ""
