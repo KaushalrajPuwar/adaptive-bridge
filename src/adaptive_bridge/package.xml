@@ -16,8 +16,6 @@
     <depend>std_msgs</depend>
     <depend>sensor_msgs</depend>
 
-    <buildtool_depend>ament_python</buildtool_depend>
-
     <test_depend>ament_lint_auto</test_depend>
     <test_depend>ament_lint_common</test_depend>
     <test_depend>python3-pytest</test_depend>
