@@ -112,19 +112,59 @@ flowchart TB
 
 ## Installation
 
+### Binary package (recommended)
+
+If you have ROS 2 Jazzy installed from the official ROS 2 repositories:
+
 ```bash
+sudo apt update
+sudo apt install ros-jazzy-adaptive-bridge
+```
+
+Then source the ROS 2 environment:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+```
+
+Verify the installation:
+
+```bash
+ros2 pkg prefix adaptive_bridge
+```
+
+The package is released for ROS 2 Jazzy as version `0.1.0`.
+
+### Source installation
+
+For development, modification, or using the latest source from GitHub:
+
+```bash
+# Create a ROS 2 workspace
+mkdir -p ~/adaptive_bridge_ws/src
+cd ~/adaptive_bridge_ws/src
+
 # Clone the repository
 git clone https://github.com/KaushalrajPuwar/adaptive-bridge.git
-cd adaptive-bridge
 
 # Build
+cd ~/adaptive_bridge_ws
+source /opt/ros/jazzy/setup.bash
 colcon build --packages-select adaptive_bridge
 
-# Source
+# Source the workspace
 source install/setup.bash
 ```
 
+Verify the source installation:
+
+```bash
+ros2 pkg prefix adaptive_bridge
+```
+
 ### Docker (for evaluation experiments)
+
+The evaluation harness uses Docker and is separate from the normal ROS 2 package installation:
 
 ```bash
 cd eval
